@@ -45,14 +45,16 @@ export default function AdminLayout({
         return;
       }
 
-      try {
-        const saved = await fetchSetting<Partial<ThemeSettings>>("theme");
-        applyTheme(mergeWithDefaultTheme(saved));
-      } catch {
-        applyTheme(DEFAULT_THEME);
-      }
-
       if (isActive) setIsReady(true);
+
+      // Load custom theme asynchronously in the background without blocking the UI
+      fetchSetting<Partial<ThemeSettings>>("theme")
+        .then((saved) => {
+          if (isActive) applyTheme(mergeWithDefaultTheme(saved));
+        })
+        .catch(() => {
+          if (isActive) applyTheme(DEFAULT_THEME);
+        });
     };
 
     void bootstrap();

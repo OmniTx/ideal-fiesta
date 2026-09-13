@@ -57,10 +57,33 @@ async function cleanupImage(url: string | null): Promise<void> {
   }
 }
 
+const CACHE_KEY = "foundry_menu_items_cache";
+
+function getCachedItems(): MenuItem[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = sessionStorage.getItem(CACHE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function setCachedItems(items: MenuItem[]) {
+  if (typeof window === "undefined") return;
+  try {
+    sessionStorage.setItem(CACHE_KEY, JSON.stringify(items));
+  } catch {
+    // Non-fatal
+  }
+}
+
 export function useMenuItems() {
   const supabase = React.useMemo(() => createClient(), []);
-  const [items, setItems] = React.useState<MenuItem[]>([]);
-  const [isLoading, setIsLoading] = React.useState(true);
+  const [items, setItems] = React.useState<MenuItem[]>(() => getCachedItems());
+  const [isLoading, setIsLoading] = React.useState(
+    () => getCachedItems().length === 0,
+  );
   const [error, setError] = React.useState<string | null>(null);
   const [pendingIds, setPendingIds] = React.useState<string[]>([]);
 
@@ -70,7 +93,7 @@ export function useMenuItems() {
   }, [items]);
 
   const load = React.useCallback(async () => {
-    setIsLoading(true);
+    if (itemsRef.current.length === 0) setIsLoading(true);
     setError(null);
     const { data, error: queryError } = await supabase
       .from("menu_items")
@@ -80,9 +103,10 @@ export function useMenuItems() {
 
     if (queryError) {
       setError(queryError.message);
-      setItems([]);
     } else {
-      setItems(sortMenuItems((data ?? []) as MenuItem[]));
+      const sorted = sortMenuItems((data ?? []) as MenuItem[]);
+      setItems(sorted);
+      setCachedItems(sorted);
     }
     setIsLoading(false);
   }, [supabase]);
