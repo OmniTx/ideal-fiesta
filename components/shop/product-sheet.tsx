@@ -84,13 +84,54 @@ export function ProductSheet({ item, onClose }: ProductSheetProps) {
     setSelectedSides([]);
   }, [item]);
 
-  // Handle escape key
+  const isPushedRef = React.useRef(false);
+
+  // Push history state so mobile swipe-back gesture closes the product sheet instead of leaving the menu page
   React.useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+    if (!item) {
+      isPushedRef.current = false;
+      return;
+    }
+
+    if (!isPushedRef.current) {
+      window.history.pushState({ productSheetOpen: true }, "", window.location.href);
+      isPushedRef.current = true;
+    }
+
+    const handlePopState = () => {
+      isPushedRef.current = false;
+      onClose();
     };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        if (isPushedRef.current && window.history.state?.productSheetOpen) {
+          isPushedRef.current = false;
+          window.history.back();
+        } else {
+          isPushedRef.current = false;
+          onClose();
+        }
+      }
+    };
+
+    window.addEventListener("popstate", handlePopState);
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [item, onClose]);
+
+  const handleClose = React.useCallback(() => {
+    if (isPushedRef.current && window.history.state?.productSheetOpen) {
+      isPushedRef.current = false;
+      window.history.back();
+    } else {
+      isPushedRef.current = false;
+      onClose();
+    }
   }, [onClose]);
 
   // Lock body scroll
@@ -175,7 +216,7 @@ export function ProductSheet({ item, onClose }: ProductSheetProps) {
       <div className="sticky top-0 z-10 flex h-14 items-center justify-between border-b border-[#dbd5c0] bg-[#f3f0e1]/95 px-4 backdrop-blur-sm sm:px-6">
         <button
           type="button"
-          onClick={onClose}
+          onClick={handleClose}
           className="flex items-center gap-2 rounded-full py-1.5 pr-4 pl-2 text-xs font-semibold tracking-wider text-[#1b1915] uppercase transition hover:bg-[#eae5d2]"
         >
           <ArrowLeft className="h-4 w-4" />
@@ -188,7 +229,7 @@ export function ProductSheet({ item, onClose }: ProductSheetProps) {
 
         <button
           type="button"
-          onClick={onClose}
+          onClick={handleClose}
           className="grid h-9 w-9 place-items-center rounded-full text-[#1b1915] transition hover:bg-[#eae5d2]"
           aria-label="Close sheet"
         >
