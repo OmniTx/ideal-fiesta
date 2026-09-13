@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { Sparkles, ArrowLeft, Coffee, Utensils, ShieldCheck } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
+import { createClient } from "@/utils/supabase/client";
 import type { MenuItem } from "@/lib/types/database";
 import { DEFAULT_MENU_ITEMS } from "@/lib/data/default-menu";
 import { ProductSheet } from "@/components/shop/product-sheet";
