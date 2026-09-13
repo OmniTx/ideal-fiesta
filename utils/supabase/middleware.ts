@@ -13,9 +13,10 @@ export async function updateSession(request: NextRequest) {
 
   const url =
     process.env.NEXT_PUBLIC_SUPABASE_URL ||
-    "https://placeholder.supabase.co";
+    "https://rgybafsqexxouyvaxxwa.supabase.co";
   const anonKey =
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "placeholder-anon-key";
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+    "sb_publishable_biR7fyJ3FGPmt40dHI8wUQ_P6howGpJ";
 
   const supabase = createServerClient(
     url,
