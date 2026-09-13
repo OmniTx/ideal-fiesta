@@ -4,24 +4,24 @@
 
 @layer base {
   :root {
-    /* Editable via admin (system_settings.theme) — these are the defaults. */
-    --background: 250 246 238;
-    --foreground: 31 30 27;
-    --primary: 163 93 57;
-    --card: 255 255 255;
-    --border: 232 227 216;
+    /* Editable via admin (system_settings.theme) — matched to sample brand palette. */
+    --background: 243 240 225;
+    --foreground: 27 25 21;
+    --primary: 90 107 75;
+    --card: 234 229 210;
+    --border: 219 213 192;
 
     /* Derived, fixed tokens. */
-    --primary-foreground: 255 255 255;
-    --card-foreground: 31 30 27;
-    --muted: 240 237 228;
+    --primary-foreground: 243 240 225;
+    --card-foreground: 27 25 21;
+    --muted: 234 229 210;
     --muted-foreground: 110 106 90;
-    --accent: 240 237 228;
-    --accent-foreground: 31 30 27;
+    --accent: 234 229 210;
+    --accent-foreground: 27 25 21;
     --destructive: 178 58 46;
     --destructive-foreground: 255 255 255;
-    --input: 232 227 216;
-    --ring: 163 93 57;
+    --input: 219 213 192;
+    --ring: 90 107 75;
   }
 
   * {

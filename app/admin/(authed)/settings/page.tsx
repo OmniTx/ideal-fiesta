@@ -18,13 +18,12 @@ import type { OpeningHours, SurchargeNotice } from "@/lib/types/database";
 
 const FALLBACK_HOURS: OpeningHours = {
   rows: [
-    { label: "Monday to Wednesday", value: "9am – 5:30pm" },
-    { label: "Thursday", value: "9am – 9pm" },
-    { label: "Friday", value: "9am – 5:30pm" },
-    { label: "Saturday", value: "9am – 5pm" },
-    { label: "Sunday", value: "10am – 4pm" },
+    { label: "Monday to Friday", value: "7:30am – 2:30pm" },
+    { label: "Saturday", value: "8:00am – 3:00pm" },
+    { label: "Sunday", value: "9:00am – 2:30pm" },
+    { label: "Public Holidays", value: "Closed" },
   ],
-  note: "Kitchen closes 30 minutes before the centre.",
+  note: "Kitchen closes 30 minutes before the bench.",
 };
 
 const FALLBACK_SURCHARGE: SurchargeNotice = {

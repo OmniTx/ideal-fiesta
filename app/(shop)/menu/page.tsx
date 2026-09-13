@@ -7,6 +7,7 @@ import { createClient } from "@/utils/supabase/client";
 import type { MenuItem, MenuCategory } from "@/lib/types/database";
 import { DEFAULT_MENU_ITEMS } from "@/lib/data/default-menu";
 import { ProductSheet } from "@/components/shop/product-sheet";
+import { useStoreSettings } from "@/lib/hooks/use-store-settings";
 
 interface CategoryMeta {
   id: MenuCategory;
@@ -57,6 +58,7 @@ export default function ShopMenuPage() {
   const [activeTab, setActiveTab] = React.useState<"all" | "drinks" | "food">("all");
   const [activeCategory, setActiveCategory] = React.useState<string>("all");
   const [selectedItem, setSelectedItem] = React.useState<MenuItem | null>(null);
+  const { openingHours, surcharge } = useStoreSettings();
 
   // Background SWR revalidation from live Supabase
   React.useEffect(() => {
@@ -86,11 +88,6 @@ export default function ShopMenuPage() {
     };
   }, []);
 
-  const formatPrice = (val: number | null | undefined) => {
-    if (val == null) return "—";
-    return `$${val.toFixed(2)}`;
-  };
-
   // Filter categories based on active tab and category filter
   const visibleCategories = CATEGORIES.filter((cat) => {
     if (activeTab !== "all" && cat.type !== activeTab) return false;
@@ -107,10 +104,14 @@ export default function ShopMenuPage() {
             <ShieldCheck className="h-3.5 w-3.5 text-[#46543a]" />
             100% Gluten Free Kitchen
           </span>
-          <span>Open Mon–Wed, Fri from 6:30am · Thu to 9pm · Weekends from 7am</span>
-          <span className="text-[#8e8979]">
-            10% surcharge on Sundays & QLD Public Holidays
+          <span>
+            {openingHours.rows.length > 0
+              ? `Open ${openingHours.rows[0].label}: ${openingHours.rows[0].value}`
+              : "Open Mon–Fri: 7:30am – 2:30pm"}
           </span>
+          {surcharge.enabled && (
+            <span className="text-[#8e8979]">{surcharge.text}</span>
+          )}
         </div>
       </div>
 
@@ -295,29 +296,52 @@ export default function ShopMenuPage() {
 
                         {/* Prices */}
                         <div className="flex shrink-0 font-semibold tabular-nums text-[#1b1915]">
-                          {category.cols && category.cols.length > 0 ? (
-                            <>
-                              {category.cols.includes("S") && (
-                                <span className="w-14 text-right text-sm">
-                                  {formatPrice(item.price_small)}
+                          {(() => {
+                            const hasSizePrices =
+                              item.price_small != null ||
+                              item.price_medium != null ||
+                              item.price_large != null;
+
+                            if (
+                              !hasSizePrices ||
+                              !category.cols ||
+                              category.cols.length === 0
+                            ) {
+                              return (
+                                <span className="text-right text-sm font-semibold sm:text-base">
+                                  {item.price_single != null
+                                    ? `$${item.price_single.toFixed(2)}`
+                                    : ""}
                                 </span>
-                              )}
-                              {category.cols.includes("M") && (
-                                <span className="w-14 text-right text-sm">
-                                  {formatPrice(item.price_medium)}
-                                </span>
-                              )}
-                              {category.cols.includes("L") && (
-                                <span className="w-14 text-right text-sm">
-                                  {formatPrice(item.price_large)}
-                                </span>
-                              )}
-                            </>
-                          ) : (
-                            <span className="text-right text-sm sm:text-base">
-                              {formatPrice(item.price_single)}
-                            </span>
-                          )}
+                              );
+                            }
+
+                            return (
+                              <>
+                                {category.cols.includes("S") && (
+                                  <span className="w-14 text-right text-sm">
+                                    {item.price_small != null
+                                      ? `$${item.price_small.toFixed(2)}`
+                                      : ""}
+                                  </span>
+                                )}
+                                {category.cols.includes("M") && (
+                                  <span className="w-14 text-right text-sm">
+                                    {item.price_medium != null
+                                      ? `$${item.price_medium.toFixed(2)}`
+                                      : ""}
+                                  </span>
+                                )}
+                                {category.cols.includes("L") && (
+                                  <span className="w-14 text-right text-sm">
+                                    {item.price_large != null
+                                      ? `$${item.price_large.toFixed(2)}`
+                                      : ""}
+                                  </span>
+                                )}
+                              </>
+                            );
+                          })()}
                         </div>
                       </button>
                     );

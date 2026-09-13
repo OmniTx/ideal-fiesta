@@ -1,11 +1,11 @@
 import type { ThemeSettings } from "@/lib/types/database";
 
 export const DEFAULT_THEME: ThemeSettings = {
-  background: "#FAF6EE",
-  foreground: "#1F1E1B",
-  primary: "#A35D39",
-  card: "#FFFFFF",
-  border: "#E8E3D8",
+  background: "#F3F0E1",
+  foreground: "#1B1915",
+  primary: "#5A6B4B",
+  card: "#EAE5D2",
+  border: "#DBD5C0",
 };
 
 export const THEME_TOKENS: {

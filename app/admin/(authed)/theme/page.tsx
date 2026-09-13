@@ -66,7 +66,7 @@ export default function AdminThemePage() {
         <CardHeader>
           <CardTitle>Colours</CardTitle>
           <CardDescription>
-            Terracotta is the house default. Changes preview instantly.
+            Artisan Olive is the house default. Changes preview instantly.
           </CardDescription>
         </CardHeader>
         <CardContent>

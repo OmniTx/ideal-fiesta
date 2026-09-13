@@ -1,9 +1,13 @@
+"use client";
+
 import * as React from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Instagram, MapPin, Clock, ShieldCheck, Heart } from "lucide-react";
+import { useStoreSettings } from "@/lib/hooks/use-store-settings";
 
 export function ShopFooter() {
+  const { openingHours } = useStoreSettings();
   const currentYear = new Date().getFullYear();
 
   return (
@@ -94,22 +98,21 @@ export function ShopFooter() {
               Trading Hours
             </h3>
             <ul className="mt-4 space-y-1.5 text-xs text-[#a8a28e]">
-              <li className="flex justify-between border-b border-[#2d2820] pb-1">
-                <span>Mon – Wed, Fri</span>
-                <span className="font-semibold text-[#cfc9b4]">6:30am – 5:30pm</span>
-              </li>
-              <li className="flex justify-between border-b border-[#2d2820] pb-1">
-                <span>Thursday (Late)</span>
-                <span className="font-semibold text-[#cfc9b4]">6:30am – 9:00pm</span>
-              </li>
-              <li className="flex justify-between border-b border-[#2d2820] pb-1">
-                <span>Saturday</span>
-                <span className="font-semibold text-[#cfc9b4]">7:00am – 5:00pm</span>
-              </li>
-              <li className="flex justify-between pt-0.5">
-                <span>Sunday</span>
-                <span className="font-semibold text-[#cfc9b4]">8:00am – 4:00pm</span>
-              </li>
+              {openingHours.rows.map((row, idx) => (
+                <li
+                  key={idx}
+                  className={`flex justify-between ${
+                    idx !== openingHours.rows.length - 1
+                      ? "border-b border-[#2d2820] pb-1"
+                      : "pt-0.5"
+                  }`}
+                >
+                  <span>{row.label}</span>
+                  <span className="font-semibold text-[#cfc9b4]">
+                    {row.value}
+                  </span>
+                </li>
+              ))}
             </ul>
           </div>
 

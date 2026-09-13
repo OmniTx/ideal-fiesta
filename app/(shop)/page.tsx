@@ -14,8 +14,10 @@ import {
   MapPin,
   Utensils,
 } from "lucide-react";
+import { useStoreSettings } from "@/lib/hooks/use-store-settings";
 
 export default function ShopHomePage() {
+  const { openingHours, surcharge } = useStoreSettings();
   const [email, setEmail] = React.useState("");
   const [subscribed, setSubscribed] = React.useState(false);
 
@@ -378,56 +380,30 @@ export default function ShopHomePage() {
               </h3>
               <table className="mt-4 w-full text-sm">
                 <tbody className="divide-y divide-[#dbd5c0]">
-                  <tr>
-                    <td className="py-3 font-medium text-[#1b1915]">Monday</td>
-                    <td className="py-3 text-right font-semibold text-[#1b1915]">
-                      6:30am – 5:30pm
-                    </td>
-                  </tr>
-                  <tr>
-                    <td className="py-3 font-medium text-[#1b1915]">Tuesday</td>
-                    <td className="py-3 text-right font-semibold text-[#1b1915]">
-                      6:30am – 5:30pm
-                    </td>
-                  </tr>
-                  <tr>
-                    <td className="py-3 font-medium text-[#1b1915]">Wednesday</td>
-                    <td className="py-3 text-right font-semibold text-[#1b1915]">
-                      6:30am – 5:30pm
-                    </td>
-                  </tr>
-                  <tr>
-                    <td className="py-3 font-medium text-[#1b1915]">
-                      Thursday <span className="text-xs text-[#46543a] font-normal">(Late Night)</span>
-                    </td>
-                    <td className="py-3 text-right font-semibold text-[#1b1915]">
-                      6:30am – 9:00pm
-                    </td>
-                  </tr>
-                  <tr>
-                    <td className="py-3 font-medium text-[#1b1915]">Friday</td>
-                    <td className="py-3 text-right font-semibold text-[#1b1915]">
-                      6:30am – 5:30pm
-                    </td>
-                  </tr>
-                  <tr>
-                    <td className="py-3 font-medium text-[#1b1915]">Saturday</td>
-                    <td className="py-3 text-right font-semibold text-[#1b1915]">
-                      7:00am – 5:00pm
-                    </td>
-                  </tr>
-                  <tr>
-                    <td className="py-3 font-medium text-[#1b1915]">Sunday</td>
-                    <td className="py-3 text-right font-semibold text-[#1b1915]">
-                      8:00am – 4:00pm
-                    </td>
-                  </tr>
+                  {openingHours.rows.map((row, idx) => (
+                    <tr key={idx}>
+                      <td className="py-3 font-medium text-[#1b1915]">
+                        {row.label}
+                      </td>
+                      <td className="py-3 text-right font-semibold text-[#1b1915]">
+                        {row.value}
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
 
-              <p className="mt-4 text-xs text-[#6e6a5a]">
-                * 10% surcharge applies on Sundays and Queensland Public Holidays.
-              </p>
+              {openingHours.note && (
+                <p className="mt-4 text-xs font-medium text-[#46543a]">
+                  {openingHours.note}
+                </p>
+              )}
+
+              {surcharge.enabled && (
+                <p className="mt-2 text-xs text-[#6e6a5a]">
+                  * {surcharge.text}
+                </p>
+              )}
             </div>
 
             {/* Address & Parking Details */}

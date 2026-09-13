@@ -197,7 +197,7 @@ export function ProductSheet({ item, onClose }: ProductSheetProps) {
       </div>
 
       {/* Main Container */}
-      <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 md:grid md:grid-cols-2 md:gap-12 md:py-12">
+      <div className="mx-auto max-w-4xl px-4 py-8 pb-28 sm:px-6 sm:pb-32 md:grid md:grid-cols-2 md:gap-12 md:py-12 md:pb-32">
         {/* Left Column: Artwork & Cup Drawing */}
         <div className="md:sticky md:top-24">
           <div
@@ -440,32 +440,32 @@ export function ProductSheet({ item, onClose }: ProductSheetProps) {
           <p className="mt-8 text-xs leading-relaxed text-[#6e6a5a]">
             Every item is made to order in our dedicated 100% gluten-free
             kitchen. Full dietary and allergen details are available at the
-            counter.
+            counter. We do not take online payments yet.
           </p>
+        </div>
+      </div>
 
-          {/* Total & Counter Ordering Bar */}
-          <div className="mt-8 rounded-2xl border border-[#dbd5c0] bg-[#eae5d2]/60 p-5">
-            <div className="flex items-baseline justify-between">
-              <div>
-                <span className="text-xs font-semibold tracking-wider text-[#6e6a5a] uppercase">
-                  Your customized {item.name}
-                </span>
-                <p className="font-display text-3xl font-bold text-[#1b1915]">
-                  ${finalTotal.toFixed(2)}{" "}
-                  <span className="text-xs font-normal text-[#6e6a5a]">AUD</span>
-                </p>
-              </div>
-
-              <div className="text-right">
-                <span className="inline-flex rounded-full bg-[#46543a] px-3 py-1 text-xs font-semibold text-[#f0efe2]">
-                  Order at Counter
-                </span>
-              </div>
+      {/* Floating Fixed Bottom Total Card (Matching Sample) */}
+      <div className="pointer-events-none fixed inset-x-0 bottom-0 z-30 p-3 sm:p-5">
+        <div className="pointer-events-auto mx-auto flex max-w-xl items-center justify-between gap-4 rounded-2xl border border-[#dbd5c0] bg-[#f3f0e1]/95 px-5 py-3.5 shadow-2xl backdrop-blur-md transition-all duration-200 hover:border-[#1b1915]/40">
+          <div className="min-w-0 flex-1">
+            <span className="block truncate text-[11px] font-semibold tracking-wider text-[#6e6a5a] uppercase">
+              Your {selectedSize ? `${selectedSize} ` : ""}{item.name}
+            </span>
+            <div className="flex items-baseline gap-1.5">
+              <span className="font-display text-2xl font-bold tabular-nums text-[#1b1915] sm:text-3xl">
+                ${finalTotal.toFixed(2)}
+              </span>
+              <span className="text-xs font-medium text-[#6e6a5a]">AUD</span>
             </div>
-            <p className="mt-3 text-xs text-[#6e6a5a]">
-              Please quote this order to our barista at Level 3, Indooroopilly
-              Shopping Centre. We do not accept online payments yet.
-            </p>
+          </div>
+
+          <div className="shrink-0 text-right">
+            <div className="inline-flex items-center gap-1.5 rounded-full bg-[#1b1915] px-3.5 py-1.5 text-xs font-semibold text-[#f3f0e1] shadow-sm">
+              <span className="h-1.5 w-1.5 rounded-full bg-[#82996d] animate-pulse" />
+              <span>Order at Counter</span>
+            </div>
+            <p className="mt-1 text-[10px] text-[#6e6a5a]">Level 3 Bench</p>
           </div>
         </div>
       </div>
