@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { Barlow, Playfair_Display } from "next/font/google";
 
 import { Toaster } from "@/components/ui/sonner";
