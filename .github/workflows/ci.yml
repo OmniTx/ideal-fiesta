@@ -37,7 +37,7 @@ jobs:
         # prerendering, so the public env vars must be present at build time.
         # These are publishable values — add them as repo secrets.
         env:
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || 'https://eskpuycdiatqfzvppxkt.supabase.co' }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || 'https://rgybafsqexxouyvaxxwa.supabase.co' }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_biR7fyJ3FGPmt40dHI8wUQ_P6howGpJ' }}
         run: npm run build
 
