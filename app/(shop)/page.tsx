@@ -91,7 +91,7 @@ export default function ShopHomePage() {
             What 100% gluten free actually means
           </h2>
           <p className="mt-3 max-w-2xl text-base text-[#6e6a5a]">
-            Most cafes offer "gluten free options" kept in the same display case
+            Most cafes offer &ldquo;gluten free options&rdquo; kept in the same display case
             as standard croissants. We built Foundry from scratch to eliminate
             cross-contamination completely.
           </p>
@@ -122,7 +122,7 @@ export default function ShopHomePage() {
                 </h3>
                 <p className="mt-1.5 text-sm leading-relaxed text-[#6e6a5a]">
                   Our staff understand cross-contact protocols because we live
-                  it every day. You don't have to explain your dietary
+                  it every day. You don&apos;t have to explain your dietary
                   requirements.
                 </p>
               </div>
@@ -334,7 +334,7 @@ export default function ShopHomePage() {
             {subscribed ? (
               <div className="mt-6 flex items-center gap-2 rounded-xl bg-[#46543a] p-4 text-sm font-semibold text-[#f0efe2]">
                 <CheckCircle2 className="h-5 w-5" />
-                <span>You're on the list! We look forward to seeing you at the bench.</span>
+                <span>You&apos;re on the list! We look forward to seeing you at the bench.</span>
               </div>
             ) : (
               <form onSubmit={handleSubscribe} className="mt-6 flex flex-wrap gap-2.5">

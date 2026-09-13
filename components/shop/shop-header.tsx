@@ -230,7 +230,7 @@ export function ShopHeader() {
             <div className="mt-8 rounded-2xl border border-[#dbd5c0] bg-[#eae5d2]/60 p-5">
               <div className="flex items-center gap-2 text-xs font-semibold tracking-wider text-[#46543a] uppercase">
                 <Clock className="h-3.5 w-3.5" />
-                <span>Today's Hours</span>
+                <span>Today&apos;s Hours</span>
               </div>
               <p className="mt-1 font-display text-lg font-bold text-[#1b1915]">
                 Open from 6:30am

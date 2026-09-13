@@ -85,7 +85,7 @@ export default function ShopSpecialsPage() {
 
           <div className="mt-6 flex items-center gap-2 text-xs font-semibold tracking-wider uppercase text-[#cfd8bd]">
             <Sparkles className="h-4 w-4" />
-            <span>Chef's Counter Selection</span>
+            <span>Chef&apos;s Counter Selection</span>
           </div>
 
           <h1 className="mt-2 font-display text-4xl font-black tracking-tight text-white sm:text-6xl">
@@ -102,7 +102,7 @@ export default function ShopSpecialsPage() {
       {/* Notice Ribbon */}
       <div className="border-b border-[#dbd5c0] bg-[#eae5d2] px-4 py-2 text-center text-xs font-medium text-[#6e6a5a]">
         <span>
-          Made to order daily · Ask our barista for today's seasonal baker
+          Made to order daily · Ask our barista for today&apos;s seasonal baker
           rotation
         </span>
       </div>
