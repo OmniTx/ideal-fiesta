@@ -13,21 +13,16 @@ jobs:
       NEXT_TELEMETRY_DISABLED: 1
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 24
-        # Add `cache: "npm"` here once a package-lock.json is committed.
-        # The cache step needs the lockfile to compute its key.
+          cache: "npm"
 
       - name: Install dependencies
-        # `npm install` (not `npm ci`) because there is no package-lock.json yet
-        # — the repo forbids local installs, so the lockfile is generated here
-        # first. Commit the lockfile after the first green run, then switch
-        # this to `npm ci` for fully reproducible installs.
-        run: npm install
+        run: npm ci
 
       - name: Lint
         run: npm run lint
@@ -42,7 +37,7 @@ jobs:
         run: npm run build
 
       - name: Upload static export artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: foundry-artisan-coffee-static-files
           path: out
