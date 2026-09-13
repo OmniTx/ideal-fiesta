@@ -105,6 +105,8 @@ export function ProductSheet({ item, onClose }: ProductSheetProps) {
     };
   }, [item]);
 
+  if (!item) return null;
+
   const isDrink = [
     "hot_coffee",
     "iced_coffee",
