@@ -1,18 +1,19 @@
-import type { Metadata } from "next";
-import { Inter, Plus_Jakarta_Sans } from "next/font/google";
+import { Barlow, Playfair_Display } from "next/font/google";
 
 import { Toaster } from "@/components/ui/sonner";
 
 import "./globals.css";
 
-const inter = Inter({
+const barlow = Barlow({
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
   variable: "--font-sans",
   display: "swap",
 });
 
-const jakarta = Plus_Jakarta_Sans({
+const playfair = Playfair_Display({
   subsets: ["latin"],
+  weight: ["700", "900"],
   variable: "--font-display",
   display: "swap",
 });
@@ -31,7 +32,7 @@ export default function RootLayout({
   return (
     <html
       lang="en-AU"
-      className={`${inter.variable} ${jakarta.variable}`}
+      className={`${barlow.variable} ${playfair.variable}`}
       suppressHydrationWarning
     >
       <body className="min-h-screen font-sans">

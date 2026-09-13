@@ -35,6 +35,18 @@ const config: Config = {
           DEFAULT: "rgb(var(--destructive) / <alpha-value>)",
           foreground: "rgb(var(--destructive-foreground) / <alpha-value>)",
         },
+        paper: {
+          DEFAULT: "#f3f0e1",
+          2: "#eae5d2",
+        },
+        ink: "#1b1915",
+        brandOlive: {
+          DEFAULT: "#46543a",
+          light: "#5a6b4b",
+        },
+        espresso: "#3b2a1e",
+        stoneRule: "#dbd5c0",
+        stoneMuted: "#6e6a5a",
       },
       borderRadius: {
         lg: "0.75rem",

@@ -116,3 +116,30 @@
     animation: none !important;
   }
 }
+
+/* Storefront specific classes from design samples */
+.leader {
+  flex: 1;
+  border-bottom: 1.5px dotted #dbd5c0;
+  transform: translateY(-4px);
+  min-width: 14px;
+}
+
+.art-cup {
+  --h: clamp(150px, 40vw, 230px);
+}
+.art-cup[data-sz="0"] {
+  --h: clamp(124px, 33vw, 188px);
+}
+.art-cup[data-sz="1"] {
+  --h: clamp(150px, 40vw, 228px);
+}
+.art-cup[data-sz="2"] {
+  --h: clamp(174px, 47vw, 268px);
+}
+.art-cup svg {
+  height: var(--h);
+  width: auto;
+  transition: height 0.28s cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+
