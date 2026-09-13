@@ -13,10 +13,10 @@ jobs:
       NEXT_TELEMETRY_DISABLED: 1
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@v4
 
       - name: Set up Node.js
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@v4
         with:
           node-version: 24
         # Add `cache: "npm"` here once a package-lock.json is committed.
@@ -35,14 +35,14 @@ jobs:
       - name: Build (typecheck + production build)
         # The admin pages construct the Supabase browser client while
         # prerendering, so the public env vars must be present at build time.
-        # These are publishable values — add them as repo secrets.
+        # Default fallbacks are also baked into utils/supabase/client.ts.
         env:
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || 'https://rgybafsqexxouyvaxxwa.supabase.co' }}
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_biR7fyJ3FGPmt40dHI8wUQ_P6howGpJ' }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
         run: npm run build
 
       - name: Upload static export artifact
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v4
         with:
           name: foundry-artisan-coffee-static-files
           path: out
