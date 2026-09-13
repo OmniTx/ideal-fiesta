@@ -1,0 +1,118 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Editable via admin (system_settings.theme) — these are the defaults. */
+    --background: 250 246 238;
+    --foreground: 31 30 27;
+    --primary: 163 93 57;
+    --card: 255 255 255;
+    --border: 232 227 216;
+
+    /* Derived, fixed tokens. */
+    --primary-foreground: 255 255 255;
+    --card-foreground: 31 30 27;
+    --muted: 240 237 228;
+    --muted-foreground: 110 106 90;
+    --accent: 240 237 228;
+    --accent-foreground: 31 30 27;
+    --destructive: 178 58 46;
+    --destructive-foreground: 255 255 255;
+    --input: 232 227 216;
+    --ring: 163 93 57;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
+
+  :where(button, a, input, select, textarea) {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+@layer utilities {
+  /* Mobile-first admin: comfortable single-handed touch targets. */
+  .touch-target {
+    min-height: 48px;
+    min-width: 48px;
+  }
+
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+}
+
+/* Minimal dialog animations — avoids pulling in an animation plugin. */
+@keyframes overlay-show {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes overlay-hide {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes content-show {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -48%) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+@keyframes content-hide {
+  from {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translate(-50%, -48%) scale(0.97);
+  }
+}
+
+.dialog-overlay[data-state="open"] {
+  animation: overlay-show 160ms ease-out;
+}
+
+.dialog-overlay[data-state="closed"] {
+  animation: overlay-hide 140ms ease-in;
+}
+
+.dialog-content[data-state="open"] {
+  animation: content-show 180ms cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+
+.dialog-content[data-state="closed"] {
+  animation: content-hide 140ms ease-in;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dialog-overlay,
+  .dialog-content {
+    animation: none !important;
+  }
+}
