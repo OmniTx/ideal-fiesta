@@ -35,6 +35,8 @@ const PAIRINGS: Record<string, { drink: string; note: string }> = {
   },
 };
 
+import { subscribeToMenuChanges } from "@/lib/realtime";
+
 export default function ShopSpecialsPage() {
   const [items, setItems] = React.useState<MenuItem[]>(() => {
     return DEFAULT_MENU_ITEMS.filter((it) => it.is_special);
@@ -42,7 +44,7 @@ export default function ShopSpecialsPage() {
 
   const [selectedItem, setSelectedItem] = React.useState<MenuItem | null>(null);
 
-  // Live Supabase revalidation in the background
+  // Live Supabase revalidation & realtime sync in the background
   React.useEffect(() => {
     let isMounted = true;
     const supabase = createClient();
@@ -57,6 +59,12 @@ export default function ShopSpecialsPage() {
 
         if (!error && data && data.length > 0 && isMounted) {
           setItems(data as MenuItem[]);
+
+          setSelectedItem((current) => {
+            if (!current) return null;
+            const updated = (data as MenuItem[]).find((i) => i.id === current.id);
+            return updated || current;
+          });
         }
       } catch {
         // Safe fallback
@@ -65,8 +73,14 @@ export default function ShopSpecialsPage() {
 
     void loadSpecials();
 
+    // Subscribe to live realtime updates
+    const unsubscribe = subscribeToMenuChanges(() => {
+      void loadSpecials();
+    });
+
     return () => {
       isMounted = false;
+      unsubscribe();
     };
   }, []);
 

@@ -5,6 +5,7 @@ import { toast } from "sonner";
 
 import { priceOrNull } from "@/lib/money";
 import { deleteR2Object, r2KeyFromUrl } from "@/lib/r2";
+import { broadcastRealtimeEvent, subscribeToMenuChanges } from "@/lib/realtime";
 import { createClient } from "@/utils/supabase/client";
 import {
   MENU_CATEGORY_VALUES,
@@ -86,11 +87,16 @@ export function useMenuItems() {
   );
   const [error, setError] = React.useState<string | null>(null);
   const [pendingIds, setPendingIds] = React.useState<string[]>([]);
+  const pendingIdsRef = React.useRef<string[]>([]);
 
   const itemsRef = React.useRef<MenuItem[]>([]);
   React.useEffect(() => {
     itemsRef.current = items;
   }, [items]);
+
+  React.useEffect(() => {
+    pendingIdsRef.current = pendingIds;
+  }, [pendingIds]);
 
   const load = React.useCallback(async () => {
     if (itemsRef.current.length === 0) setIsLoading(true);
@@ -113,6 +119,15 @@ export function useMenuItems() {
 
   React.useEffect(() => {
     void load();
+
+    // Subscribe to live updates from other devices/tabs
+    const unsubscribe = subscribeToMenuChanges(() => {
+      if (pendingIdsRef.current.length === 0) {
+        void load();
+      }
+    });
+
+    return () => unsubscribe();
   }, [load]);
 
   const markPending = (id: string, pending: boolean) => {
@@ -151,6 +166,7 @@ export function useMenuItems() {
       }
 
       toast.success(successMessage);
+      void broadcastRealtimeEvent("menu_updated");
       return true;
     },
     [supabase],
@@ -238,6 +254,7 @@ export function useMenuItems() {
         }
 
         toast.success(`${saved.name} updated`);
+        void broadcastRealtimeEvent("menu_updated");
         return true;
       }
 
@@ -255,6 +272,7 @@ export function useMenuItems() {
       const saved = data as MenuItem;
       setItems((current) => sortMenuItems([...current, saved]));
       toast.success(`${saved.name} added to the menu`);
+      void broadcastRealtimeEvent("menu_updated");
       return true;
     },
     [supabase],
@@ -280,6 +298,7 @@ export function useMenuItems() {
 
       await cleanupImage(item.image_url);
       toast.success(`${item.name} deleted`);
+      void broadcastRealtimeEvent("menu_updated");
       return true;
     },
     [supabase],
@@ -314,6 +333,7 @@ export function useMenuItems() {
           ? `${ids.length} ${ids.length === 1 ? "item" : "items"} marked in stock`
           : `${ids.length} ${ids.length === 1 ? "item" : "items"} marked sold out`,
       );
+      void broadcastRealtimeEvent("menu_updated");
       return true;
     },
     [supabase],
@@ -348,6 +368,7 @@ export function useMenuItems() {
           ? `${ids.length} ${ids.length === 1 ? "item" : "items"} added to specials`
           : `${ids.length} ${ids.length === 1 ? "item" : "items"} removed from specials`,
       );
+      void broadcastRealtimeEvent("menu_updated");
       return true;
     },
     [supabase],

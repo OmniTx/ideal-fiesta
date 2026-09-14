@@ -50,17 +50,24 @@ function parseSurcharge(value: unknown): SurchargeNotice {
   return FALLBACK_SURCHARGE;
 }
 
+import { subscribeToSettingsChanges } from "@/lib/realtime";
+
 export default function AdminSettingsPage() {
   const [hours, setHours] = React.useState<OpeningHours>(FALLBACK_HOURS);
   const [surcharge, setSurcharge] =
     React.useState<SurchargeNotice>(FALLBACK_SURCHARGE);
   const [isLoading, setIsLoading] = React.useState(true);
   const [isSaving, setIsSaving] = React.useState(false);
+  const isSavingRef = React.useRef(false);
+
+  React.useEffect(() => {
+    isSavingRef.current = isSaving;
+  }, [isSaving]);
 
   React.useEffect(() => {
     let isActive = true;
 
-    (async () => {
+    const load = async () => {
       try {
         const settings = await fetchSettings([
           "opening_hours",
@@ -77,10 +84,19 @@ export default function AdminSettingsPage() {
       } finally {
         if (isActive) setIsLoading(false);
       }
-    })();
+    };
+
+    void load();
+
+    const unsubscribe = subscribeToSettingsChanges(() => {
+      if (!isSavingRef.current) {
+        void load();
+      }
+    });
 
     return () => {
       isActive = false;
+      unsubscribe();
     };
   }, []);
 

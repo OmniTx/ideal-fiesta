@@ -9,6 +9,8 @@ import { DEFAULT_MENU_ITEMS } from "@/lib/data/default-menu";
 import { ProductSheet } from "@/components/shop/product-sheet";
 import { useStoreSettings } from "@/lib/hooks/use-store-settings";
 
+import { subscribeToMenuChanges } from "@/lib/realtime";
+
 interface CategoryMeta {
   id: MenuCategory;
   title: string;
@@ -60,7 +62,7 @@ export default function ShopMenuPage() {
   const [selectedItem, setSelectedItem] = React.useState<MenuItem | null>(null);
   const { openingHours, surcharge } = useStoreSettings();
 
-  // Background SWR revalidation from live Supabase
+  // Background SWR revalidation & Live Realtime sync from Supabase
   React.useEffect(() => {
     let isMounted = true;
     const supabase = createClient();
@@ -75,6 +77,13 @@ export default function ShopMenuPage() {
         if (!error && data && data.length > 0 && isMounted) {
           setItems(data as MenuItem[]);
           sessionStorage.setItem(CACHE_KEY, JSON.stringify(data));
+
+          // Also keep the currently open product sheet synchronized if open
+          setSelectedItem((current) => {
+            if (!current) return null;
+            const updated = (data as MenuItem[]).find((i) => i.id === current.id);
+            return updated || current;
+          });
         }
       } catch {
         // Keep default/cached items safely
@@ -83,8 +92,14 @@ export default function ShopMenuPage() {
 
     void fetchLiveMenu();
 
+    // Subscribe to live realtime updates
+    const unsubscribe = subscribeToMenuChanges(() => {
+      void fetchLiveMenu();
+    });
+
     return () => {
       isMounted = false;
+      unsubscribe();
     };
   }, []);
 

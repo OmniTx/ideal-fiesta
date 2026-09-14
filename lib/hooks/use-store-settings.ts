@@ -19,6 +19,8 @@ export const DEFAULT_SURCHARGE: SurchargeNotice = {
   text: "A 10% surcharge applies on public holidays.",
 };
 
+import { subscribeToSettingsChanges } from "@/lib/realtime";
+
 export function useStoreSettings() {
   const [openingHours, setOpeningHours] =
     React.useState<OpeningHours>(DEFAULT_OPENING_HOURS);
@@ -95,10 +97,17 @@ export function useStoreSettings() {
 
     void load();
 
+    // Subscribe to realtime updates for settings (hours & surcharge)
+    const unsubscribe = subscribeToSettingsChanges(() => {
+      void load();
+    });
+
     return () => {
       isMounted = false;
+      unsubscribe();
     };
   }, []);
 
   return { openingHours, surcharge, loading };
 }
+

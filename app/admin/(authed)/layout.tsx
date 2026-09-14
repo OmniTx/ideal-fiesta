@@ -11,6 +11,7 @@ import {
   mergeWithDefaultTheme,
 } from "@/lib/theme";
 import type { ThemeSettings } from "@/lib/types/database";
+import { subscribeToSettingsChanges } from "@/lib/realtime";
 import { createClient } from "@/utils/supabase/client";
 
 function ShellSkeleton() {
@@ -47,14 +48,18 @@ export default function AdminLayout({
 
       if (isActive) setIsReady(true);
 
+      const loadTheme = () => {
+        fetchSetting<Partial<ThemeSettings>>("theme")
+          .then((saved) => {
+            if (isActive) applyTheme(mergeWithDefaultTheme(saved));
+          })
+          .catch(() => {
+            if (isActive) applyTheme(DEFAULT_THEME);
+          });
+      };
+
       // Load custom theme asynchronously in the background without blocking the UI
-      fetchSetting<Partial<ThemeSettings>>("theme")
-        .then((saved) => {
-          if (isActive) applyTheme(mergeWithDefaultTheme(saved));
-        })
-        .catch(() => {
-          if (isActive) applyTheme(DEFAULT_THEME);
-        });
+      loadTheme();
     };
 
     void bootstrap();
@@ -65,9 +70,20 @@ export default function AdminLayout({
       if (event === "SIGNED_OUT") router.replace("/admin/login");
     });
 
+    const unsubscribeTheme = subscribeToSettingsChanges((key) => {
+      if (!key || key === "theme") {
+        fetchSetting<Partial<ThemeSettings>>("theme")
+          .then((saved) => {
+            if (isActive) applyTheme(mergeWithDefaultTheme(saved));
+          })
+          .catch(() => {});
+      }
+    });
+
     return () => {
       isActive = false;
       subscription.unsubscribe();
+      unsubscribeTheme();
     };
   }, [router, supabase]);
 

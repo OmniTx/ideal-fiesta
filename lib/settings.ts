@@ -1,4 +1,5 @@
 import { createClient } from "@/utils/supabase/client";
+import { broadcastRealtimeEvent } from "@/lib/realtime";
 
 /**
  * Thin wrapper over the `system_settings` key/value table. All calls run as the
@@ -40,4 +41,6 @@ export async function saveSetting(key: string, value: unknown): Promise<void> {
     .upsert({ key, value }, { onConflict: "key" });
 
   if (error) throw new Error(error.message);
+
+  void broadcastRealtimeEvent("settings_updated", { key });
 }
