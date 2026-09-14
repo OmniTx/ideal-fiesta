@@ -546,9 +546,7 @@ alter publication supabase_realtime add table public.analytics_events;`;
                           {lead.last_ip || "Unknown IP"}
                         </div>
                         <div className="text-[10px] text-muted-foreground">
-                          {lead.city ? `${lead.city}, ` : ""}
-                          {lead.region ? `${lead.region}, ` : ""}
-                          {lead.country || "Australia"}
+                          {[lead.city, lead.region, lead.country].filter(Boolean).join(", ") || "Location unavailable"}
                         </div>
                       </td>
 
@@ -622,11 +620,11 @@ alter publication supabase_realtime add table public.analytics_events;`;
                       </td>
 
                       <td className="px-4 py-3">
-                        <div className="text-foreground">
-                          {v.city || "Brisbane"}
+                        <div className="text-foreground font-medium">
+                          {v.city ? v.city : v.country ? v.country : "Unknown Location"}
                         </div>
                         <div className="text-[10px] text-muted-foreground">
-                          {v.region || "Queensland"}, {v.country || "AU"}
+                          {[v.region, v.country].filter(Boolean).join(", ") || (v.city ? "" : "Location unavailable")}
                         </div>
                       </td>
 

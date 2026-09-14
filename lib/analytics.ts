@@ -168,7 +168,7 @@ export function detectDevice(): DeviceInfo {
 }
 
 /**
- * Fetch public IP and Geo information (cached for session to avoid redundant calls)
+ * Fetch real public IP and Geo information (cached in sessionStorage for session duration)
  */
 export async function getGeoInfo(): Promise<GeoInfo> {
   if (typeof window === "undefined") {
@@ -178,53 +178,83 @@ export async function getGeoInfo(): Promise<GeoInfo> {
   try {
     const cached = sessionStorage.getItem(GEO_CACHE_KEY);
     if (cached) {
-      return JSON.parse(cached);
+      const parsed = JSON.parse(cached);
+      if (parsed && parsed.ip) return parsed;
     }
   } catch {
     // ignore
   }
 
-  // Try fetching IP & location
+  // 1. Primary: ipwho.is (fast, HTTPS, CORS enabled, accurate city/region/country)
   try {
-    // freeipapi provides IP + city + region + country without API keys
-    const res = await fetch("https://freeipapi.com/api/json", {
+    const res = await fetch("https://ipwho.is/", {
       signal: AbortSignal.timeout(3000),
     });
     if (res.ok) {
       const data = await res.json();
-      const info: GeoInfo = {
-        ip: data.ipAddress || null,
-        city: data.cityName || null,
-        region: data.regionName || null,
-        country: data.countryName || null,
-      };
-      try {
-        sessionStorage.setItem(GEO_CACHE_KEY, JSON.stringify(info));
-      } catch {}
-      return info;
-    }
-  } catch {
-    // Fallback to ipify for IP only
-    try {
-      const res = await fetch("https://api.ipify.org?format=json", {
-        signal: AbortSignal.timeout(2000),
-      });
-      if (res.ok) {
-        const data = await res.json();
+      if (data && data.success !== false && data.ip) {
         const info: GeoInfo = {
-          ip: data.ip || null,
-          city: "Brisbane",
-          region: "Queensland",
-          country: "Australia",
+          ip: data.ip,
+          city: data.city || null,
+          region: data.region || null,
+          country: data.country || null,
         };
         try {
           sessionStorage.setItem(GEO_CACHE_KEY, JSON.stringify(info));
         } catch {}
         return info;
       }
-    } catch {
-      // offline / adblock
     }
+  } catch {
+    // Try fallback
+  }
+
+  // 2. Fallback: freeipapi.com
+  try {
+    const res = await fetch("https://freeipapi.com/api/json", {
+      signal: AbortSignal.timeout(3000),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.ipAddress) {
+        const info: GeoInfo = {
+          ip: data.ipAddress,
+          city: data.cityName || null,
+          region: data.regionName || null,
+          country: data.countryName || null,
+        };
+        try {
+          sessionStorage.setItem(GEO_CACHE_KEY, JSON.stringify(info));
+        } catch {}
+        return info;
+      }
+    }
+  } catch {
+    // Try ipify
+  }
+
+  // 3. Fallback: ipify (IP only, no fake city or country)
+  try {
+    const res = await fetch("https://api.ipify.org?format=json", {
+      signal: AbortSignal.timeout(2500),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.ip) {
+        const info: GeoInfo = {
+          ip: data.ip,
+          city: null,
+          region: null,
+          country: null,
+        };
+        try {
+          sessionStorage.setItem(GEO_CACHE_KEY, JSON.stringify(info));
+        } catch {}
+        return info;
+      }
+    }
+  } catch {
+    // offline or blocked
   }
 
   return { ip: null, city: null, region: null, country: null };
@@ -474,7 +504,7 @@ export async function captureCustomerLead(lead: {
     phone: lead.phone,
     email: lead.email,
     deviceModel: device.deviceModel,
-    location: `${geo.city || "Brisbane"}, ${geo.country || "AU"}`,
+    location: [geo.city, geo.country].filter(Boolean).join(", ") || "Unknown Location",
   });
 
   return success;
