@@ -23,6 +23,13 @@ export const metadata: Metadata = {
   title: "Foundry Artisan Coffee",
   description:
     "Digital menu and admin for Foundry Artisan Coffee, Indooroopilly Shopping Centre.",
+  icons: {
+    icon: [
+      { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/favicon.ico", sizes: "any" },
+    ],
+    apple: "/apple-touch-icon.png",
+  },
 };
 
 export default function RootLayout({
