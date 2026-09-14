@@ -4,23 +4,15 @@ import * as React from "react";
 import {
   Users,
   Smartphone,
-  Globe,
   Phone,
   Mail,
   Download,
   Search,
   RefreshCw,
-  TrendingUp,
-  Clock,
-  Eye,
   Coffee,
-  CheckCircle2,
-  Copy,
-  Terminal,
   Laptop,
   Tablet,
   Activity,
-  ArrowUpRight,
 } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/utils/supabase/client";
@@ -32,56 +24,29 @@ export default function AdminAnalyticsPage() {
   const [events, setEvents] = React.useState<AnalyticsEvent[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [searchQuery, setSearchQuery] = React.useState("");
-  const [activeTab, setActiveTab] = React.useState<"leads" | "visitors" | "items" | "setup">("leads");
-  const [copiedSql, setCopiedSql] = React.useState(false);
-  const [isUsingFallback, setIsUsingFallback] = React.useState(false);
+  const [activeTab, setActiveTab] = React.useState<"leads" | "visitors" | "items">("leads");
 
   const supabase = React.useMemo(() => createClient(), []);
 
-  // Fetch data from Supabase tables with fallback to system_settings
+  // Fetch telemetry cleanly from Supabase system_settings
   const loadData = React.useCallback(async () => {
     try {
-      // 1. Try fetching from dedicated analytics tables
-      const [visitorsRes, eventsRes] = await Promise.all([
-        supabase
-          .from("analytics_visitors")
-          .select("*")
-          .order("last_seen", { ascending: false })
-          .limit(200),
-        supabase
-          .from("analytics_events")
-          .select("*")
-          .order("created_at", { ascending: false })
-          .limit(300),
-      ]);
+      const { data } = await supabase
+        .from("system_settings")
+        .select("value")
+        .eq("key", "analytics_telemetry")
+        .single();
 
-      if (!visitorsRes.error && visitorsRes.data) {
-        setVisitors(visitorsRes.data as AnalyticsVisitor[]);
-        setIsUsingFallback(false);
-      } else {
-        // Fallback: check system_settings
-        setIsUsingFallback(true);
-        const { data } = await supabase
-          .from("system_settings")
-          .select("value")
-          .eq("key", "analytics_telemetry")
-          .single();
-
-        if (data?.value) {
-          const telemetry = data.value as {
-            visitors?: Record<string, AnalyticsVisitor>;
-            events?: AnalyticsEvent[];
-          };
-          const list = Object.values(telemetry.visitors || {}).sort(
-            (a, b) => new Date(b.last_seen).getTime() - new Date(a.last_seen).getTime(),
-          );
-          setVisitors(list);
-          setEvents(telemetry.events || []);
-        }
-      }
-
-      if (!eventsRes.error && eventsRes.data) {
-        setEvents(eventsRes.data as AnalyticsEvent[]);
+      if (data?.value) {
+        const telemetry = data.value as {
+          visitors?: Record<string, AnalyticsVisitor>;
+          events?: AnalyticsEvent[];
+        };
+        const list = Object.values(telemetry.visitors || {}).sort(
+          (a, b) => new Date(b.last_seen).getTime() - new Date(a.last_seen).getTime(),
+        );
+        setVisitors(list);
+        setEvents(telemetry.events || []);
       }
     } catch {
       // Non-fatal
@@ -207,58 +172,6 @@ export default function AdminAnalyticsPage() {
     toast.success(`Exported ${identifiedLeads.length} leads to CSV.`);
   };
 
-  const sqlMigrationCode = `-- Copy and execute in your Supabase SQL Editor:
-create table if not exists public.analytics_visitors (
-  visitor_id text primary key,
-  name text,
-  phone text,
-  email text,
-  first_seen timestamptz not null default now(),
-  last_seen timestamptz not null default now(),
-  total_visits integer not null default 1,
-  last_ip text,
-  city text,
-  region text,
-  country text,
-  device_type text,
-  device_model text,
-  os text,
-  browser text,
-  screen_res text,
-  user_agent text
-);
-
-create table if not exists public.analytics_events (
-  id uuid primary key default gen_random_uuid(),
-  visitor_id text not null references public.analytics_visitors(visitor_id) on delete cascade,
-  session_id text not null,
-  event_type text not null,
-  page_path text not null,
-  metadata jsonb default '{}'::jsonb,
-  ip text,
-  created_at timestamptz not null default now()
-);
-
-alter table public.analytics_visitors enable row level security;
-alter table public.analytics_events enable row level security;
-
-create policy "analytics_visitors public insert" on public.analytics_visitors for insert to anon, authenticated with check (true);
-create policy "analytics_visitors public update" on public.analytics_visitors for update to anon, authenticated using (true) with check (true);
-create policy "analytics_visitors admin all" on public.analytics_visitors for all to authenticated using (true) with check (true);
-
-create policy "analytics_events public insert" on public.analytics_events for insert to anon, authenticated with check (true);
-create policy "analytics_events admin all" on public.analytics_events for all to authenticated using (true) with check (true);
-
-alter publication supabase_realtime add table public.analytics_visitors;
-alter publication supabase_realtime add table public.analytics_events;`;
-
-  const copySql = () => {
-    void navigator.clipboard.writeText(sqlMigrationCode);
-    setCopiedSql(true);
-    toast.success("SQL migration copied to clipboard!");
-    setTimeout(() => setCopiedSql(false), 2500);
-  };
-
   return (
     <div className="space-y-6">
       {/* Top Title & Header Actions */}
@@ -296,33 +209,6 @@ alter publication supabase_realtime add table public.analytics_events;`;
           </button>
         </div>
       </div>
-
-      {/* Database Schema Notice if using fallback */}
-      {isUsingFallback && (
-        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-xs">
-          <div className="flex items-start gap-3">
-            <Terminal className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
-            <div className="flex-1 space-y-1">
-              <p className="font-semibold text-amber-900 dark:text-amber-200">
-                Resilient Telemetry Mode Active (Fallback Storage)
-              </p>
-              <p className="text-amber-800 dark:text-amber-300">
-                Visitor and lead events are currently being tracked cleanly in your Supabase settings. To activate high-performance PostgreSQL analytics tables with instant indexing:
-              </p>
-              <div className="pt-2">
-                <button
-                  type="button"
-                  onClick={() => setActiveTab("setup")}
-                  className="inline-flex items-center gap-1 font-semibold text-amber-950 underline hover:no-underline dark:text-amber-100"
-                >
-                  <span>View 1-Click SQL Setup Script</span>
-                  <ArrowUpRight className="h-3 w-3" />
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* KPI Overview Metric Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -431,19 +317,6 @@ alter publication supabase_realtime add table public.analytics_events;`;
           >
             <Coffee className="h-3.5 w-3.5" />
             <span>Popular Items ({popularItems.length})</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab("setup")}
-            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
-              activeTab === "setup"
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:bg-muted hover:text-foreground"
-            }`}
-          >
-            <Terminal className="h-3.5 w-3.5" />
-            <span>SQL Schema</span>
           </button>
         </div>
 
@@ -731,44 +604,6 @@ alter publication supabase_realtime add table public.analytics_events;`;
               )}
             </div>
           </div>
-        </div>
-      )}
-
-      {/* TAB CONTENT 4: SQL SCHEMA / 1-CLICK SETUP */}
-      {activeTab === "setup" && (
-        <div className="rounded-xl border border-border bg-card p-6 shadow-sm space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="font-display text-lg font-bold">
-                Supabase Dedicated SQL Migration
-              </h2>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Run this SQL in your Supabase Dashboard (<span className="font-mono text-primary">SQL Editor</span>) to enable dedicated PostgreSQL analytics tables with full indexing and RLS.
-              </p>
-            </div>
-
-            <button
-              type="button"
-              onClick={copySql}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-xs font-semibold text-primary-foreground hover:opacity-90 transition"
-            >
-              {copiedSql ? (
-                <>
-                  <CheckCircle2 className="h-3.5 w-3.5" />
-                  <span>Copied!</span>
-                </>
-              ) : (
-                <>
-                  <Copy className="h-3.5 w-3.5" />
-                  <span>Copy SQL Script</span>
-                </>
-              )}
-            </button>
-          </div>
-
-          <pre className="rounded-lg bg-zinc-950 p-4 text-[11px] text-zinc-200 overflow-x-auto font-mono max-h-96 leading-relaxed border border-zinc-800">
-            {sqlMigrationCode}
-          </pre>
         </div>
       )}
     </div>
