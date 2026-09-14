@@ -285,34 +285,49 @@ export async function getGeoInfo(): Promise<GeoInfo> {
 
 /**
  * Saves a visitor snapshot into system_settings telemetry store in Supabase
+ * Only executes direct database writes if an authenticated session is active,
+ * ensuring anonymous storefront visits never produce 401/405 errors in the browser console.
  */
 async function recordToTelemetryStore(
   visitor: Partial<AnalyticsVisitor> & { visitor_id: string },
   event?: { event_type: string; page_path: string; metadata?: Record<string, unknown> },
 ) {
-  // 1. Primary: Serverless telemetry ingestion endpoint (Cloudflare Pages Function, uses Service Role Key)
+  if (typeof window === "undefined") return;
+
+  // 1. Cache telemetry locally in the visitor's browser
   try {
-    const res = await fetch("/api/telemetry", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ visitor, event }),
-      keepalive: true,
-    });
-    if (res.ok) return;
+    const cached = localStorage.getItem("foundry_telemetry_cache");
+    const local = cached ? JSON.parse(cached) : { visitors: {}, events: [] };
+    local.visitors[visitor.visitor_id] = {
+      ...(local.visitors[visitor.visitor_id] || {}),
+      ...visitor,
+      last_seen: new Date().toISOString(),
+    };
+    if (event) {
+      local.events = [{ ...event, visitor_id: visitor.visitor_id, created_at: new Date().toISOString() }, ...(local.events || [])].slice(0, 50);
+    }
+    localStorage.setItem("foundry_telemetry_cache", JSON.stringify(local));
   } catch {
-    // API endpoint not reachable (e.g. running outside Cloudflare Pages)
+    // Ignore storage quota
   }
 
-  // 2. Secondary fallback: Direct Supabase client upsert (succeeds for authenticated admin)
+  // 2. Direct Supabase persist if authenticated (e.g. staff or admin session)
   try {
     const supabase = createClient();
-    const { data } = await supabase
+    const { data } = await supabase.auth.getSession();
+    if (!data?.session) {
+      // Anonymous visitor: live sync is handled 100% cleanly over Supabase Realtime WebSocket.
+      // Do not attempt an unauthorized HTTP PostgREST upsert to prevent red console errors.
+      return;
+    }
+
+    const { data: settingsData } = await supabase
       .from("system_settings")
       .select("value")
       .eq("key", "analytics_telemetry")
       .single();
 
-    const current = (data?.value as {
+    const current = (settingsData?.value as {
       visitors?: Record<string, unknown>;
       events?: unknown[];
     }) || { visitors: {}, events: [] };
@@ -337,7 +352,6 @@ async function recordToTelemetryStore(
         created_at: new Date().toISOString(),
         ...event,
       });
-      // Keep latest 200 events to prevent JSON bloat
       if (events.length > 200) events.length = 200;
     }
 
