@@ -15,18 +15,29 @@ import {
   Utensils,
 } from "lucide-react";
 import { useStoreSettings } from "@/lib/hooks/use-store-settings";
+import { captureCustomerLead } from "@/lib/analytics";
 
 export default function ShopHomePage() {
   const { openingHours, surcharge } = useStoreSettings();
+  const [name, setName] = React.useState("");
+  const [phone, setPhone] = React.useState("");
   const [email, setEmail] = React.useState("");
   const [subscribed, setSubscribed] = React.useState(false);
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
 
-  const handleSubscribe = (e: React.FormEvent) => {
+  const handleSubscribe = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (email.trim()) {
-      setSubscribed(true);
-      setEmail("");
-    }
+    if (!email.trim() && !phone.trim()) return;
+
+    setIsSubmitting(true);
+    await captureCustomerLead({
+      name,
+      phone,
+      email,
+      source: "homepage_regulars",
+    });
+    setIsSubmitting(false);
+    setSubscribed(true);
   };
 
   return (
@@ -321,39 +332,66 @@ export default function ShopHomePage() {
         </div>
       </section>
 
-      {/* 6. SIGNUP / NEWSLETTER */}
+      {/* 6. SIGNUP / NEWSLETTER & PERKS */}
       <section className="border-b border-[#dbd5c0] bg-[#eae5d2] px-4 py-16 sm:px-6 sm:py-20">
         <div className="mx-auto max-w-5xl">
           <div className="max-w-xl">
-            <h2 className="font-display text-3xl font-bold tracking-tight text-[#1b1915]">
+            <div className="inline-flex items-center gap-1.5 rounded-full bg-[#46543a]/10 px-3 py-1 text-xs font-semibold tracking-wider uppercase text-[#46543a]">
+              <Sparkles className="h-3.5 w-3.5" />
+              <span>Foundry Perks & Secret Specials</span>
+            </div>
+
+            <h2 className="mt-3 font-display text-3xl font-bold tracking-tight text-[#1b1915]">
               Join the regulars
             </h2>
-            <p className="mt-2 text-sm text-[#6e6a5a]">
-              Hear when new seasonal specials drop, special roasts arrive, or
-              holiday trading hours change. No spam, ever.
+            <p className="mt-2 text-sm leading-relaxed text-[#6e6a5a]">
+              Get secret chef specials, priority bench alerts, and a 10% welcome perk. No spam, ever.
             </p>
 
             {subscribed ? (
-              <div className="mt-6 flex items-center gap-2 rounded-xl bg-[#46543a] p-4 text-sm font-semibold text-[#f0efe2]">
-                <CheckCircle2 className="h-5 w-5" />
-                <span>You&apos;re on the list! We look forward to seeing you at the bench.</span>
+              <div className="mt-6 flex items-center gap-2.5 rounded-2xl bg-[#46543a] p-5 text-sm font-semibold text-[#f0efe2] shadow-sm">
+                <CheckCircle2 className="h-5 w-5 shrink-0 text-[#cfd8bd]" />
+                <div>
+                  <p>You&apos;re on the list! Welcome to Foundry Club.</p>
+                  <p className="text-xs font-normal opacity-90">We look forward to seeing you at the Indooroopilly bench.</p>
+                </div>
               </div>
             ) : (
-              <form onSubmit={handleSubscribe} className="mt-6 flex flex-wrap gap-2.5">
-                <input
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Enter your email address"
-                  className="min-w-[240px] flex-1 rounded-full border border-[#dbd5c0] bg-[#f3f0e1] px-5 py-3 text-sm text-[#1b1915] placeholder:text-[#6e6a5a] focus:border-[#46543a] focus:outline-none"
-                />
-                <button
-                  type="submit"
-                  className="rounded-full bg-[#1b1915] px-7 py-3 text-sm font-semibold text-[#f3f0e1] transition hover:bg-[#3b2a1e]"
-                >
-                  Keep me posted
-                </button>
+              <form onSubmit={handleSubscribe} className="mt-6 space-y-3">
+                <div className="grid gap-2.5 sm:grid-cols-2">
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Your Name"
+                    className="w-full rounded-full border border-[#dbd5c0] bg-[#f3f0e1] px-5 py-3 text-sm text-[#1b1915] placeholder:text-[#6e6a5a] focus:border-[#46543a] focus:outline-none"
+                  />
+                  <input
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="Mobile Number (e.g. 0400 123 456)"
+                    className="w-full rounded-full border border-[#dbd5c0] bg-[#f3f0e1] px-5 py-3 text-sm text-[#1b1915] placeholder:text-[#6e6a5a] focus:border-[#46543a] focus:outline-none"
+                  />
+                </div>
+
+                <div className="flex flex-wrap gap-2.5">
+                  <input
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="Email Address"
+                    className="min-w-[240px] flex-1 rounded-full border border-[#dbd5c0] bg-[#f3f0e1] px-5 py-3 text-sm text-[#1b1915] placeholder:text-[#6e6a5a] focus:border-[#46543a] focus:outline-none"
+                  />
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="rounded-full bg-[#1b1915] px-7 py-3 text-sm font-semibold text-[#f3f0e1] transition hover:bg-[#3b2a1e] disabled:opacity-50"
+                  >
+                    {isSubmitting ? "Joining..." : "Join Regulars"}
+                  </button>
+                </div>
               </form>
             )}
           </div>

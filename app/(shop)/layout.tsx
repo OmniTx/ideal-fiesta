@@ -1,6 +1,7 @@
 import * as React from "react";
 import { ShopHeader } from "@/components/shop/shop-header";
 import { ShopFooter } from "@/components/shop/shop-footer";
+import { VipPerkBanner } from "@/components/shop/vip-perk-banner";
 
 export default function ShopLayout({
   children,
@@ -12,6 +13,7 @@ export default function ShopLayout({
       <ShopHeader />
       <main className="min-h-[calc(100vh-16rem)]">{children}</main>
       <ShopFooter />
+      <VipPerkBanner />
     </div>
   );
 }

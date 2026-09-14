@@ -36,6 +36,7 @@ const PAIRINGS: Record<string, { drink: string; note: string }> = {
 };
 
 import { subscribeToMenuChanges } from "@/lib/realtime";
+import { trackItemClick } from "@/lib/analytics";
 
 export default function ShopSpecialsPage() {
   const [items, setItems] = React.useState<MenuItem[]>(() => {
@@ -174,7 +175,10 @@ export default function ShopSpecialsPage() {
 
                   <button
                     type="button"
-                    onClick={() => setSelectedItem(item)}
+                    onClick={() => {
+                      setSelectedItem(item);
+                      void trackItemClick(item.name, "specials");
+                    }}
                     className="rounded-full bg-[#1b1915] px-4 py-2 text-xs font-semibold text-[#f3f0e1] transition hover:bg-[#3b2a1e]"
                   >
                     View Options & Sides

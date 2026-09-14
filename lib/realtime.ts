@@ -2,7 +2,11 @@ import { createClient } from "@/utils/supabase/client";
 
 export const REALTIME_CHANNEL = "foundry-live-sync";
 
-export type RealtimeEvent = "menu_updated" | "settings_updated";
+export type RealtimeEvent =
+  | "menu_updated"
+  | "settings_updated"
+  | "analytics_event"
+  | "lead_captured";
 
 /**
  * Broadcast an event across all connected browser windows (storefront & admin).
@@ -108,5 +112,38 @@ export function subscribeToSettingsChanges(
     void supabase.removeChannel(channel);
     window.removeEventListener("visibilitychange", handleVisibility);
     window.removeEventListener("focus", handleVisibility);
+  };
+}
+
+/**
+ * Subscribe to analytics and new lead events
+ */
+export function subscribeToAnalytics(
+  onUpdate: (payload?: unknown) => void,
+): () => void {
+  if (typeof window === "undefined") return () => {};
+
+  const supabase = createClient();
+  const channel = supabase.channel(
+    `analytics-sync-${Math.random().toString(36).substring(2, 9)}`,
+  );
+
+  channel
+    .on("broadcast", { event: "analytics_event" }, (p) => onUpdate(p))
+    .on("broadcast", { event: "lead_captured" }, (p) => onUpdate(p))
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "analytics_visitors" },
+      (p) => onUpdate(p),
+    )
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "analytics_events" },
+      (p) => onUpdate(p),
+    )
+    .subscribe();
+
+  return () => {
+    void supabase.removeChannel(channel);
   };
 }

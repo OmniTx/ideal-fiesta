@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Barlow, Playfair_Display } from "next/font/google";
 
 import { Toaster } from "@/components/ui/sonner";
+import { AnalyticsProvider } from "@/components/analytics/analytics-provider";
 
 import "./globals.css";
 
@@ -44,6 +45,7 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body className="min-h-screen font-sans" suppressHydrationWarning>
+        <AnalyticsProvider />
         {children}
         <Toaster position="top-center" richColors closeButton />
       </body>

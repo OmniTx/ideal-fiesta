@@ -10,6 +10,7 @@ import { ProductSheet } from "@/components/shop/product-sheet";
 import { useStoreSettings } from "@/lib/hooks/use-store-settings";
 
 import { subscribeToMenuChanges } from "@/lib/realtime";
+import { trackItemClick } from "@/lib/analytics";
 
 interface CategoryMeta {
   id: MenuCategory;
@@ -285,7 +286,10 @@ export default function ShopMenuPage() {
                       <button
                         key={item.id}
                         type="button"
-                        onClick={() => setSelectedItem(item)}
+                        onClick={() => {
+                          setSelectedItem(item);
+                          void trackItemClick(item.name, item.category);
+                        }}
                         className={`group flex w-full items-baseline gap-2 py-3.5 text-left transition focus:outline-none ${
                           isSoldOut
                             ? "opacity-50 hover:opacity-75"

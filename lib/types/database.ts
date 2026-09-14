@@ -105,6 +105,37 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[];
 
+export interface AnalyticsVisitor {
+  visitor_id: string;
+  name: string | null;
+  phone: string | null;
+  email: string | null;
+  first_seen: string;
+  last_seen: string;
+  total_visits: number;
+  last_ip: string | null;
+  city: string | null;
+  region: string | null;
+  country: string | null;
+  device_type: "mobile" | "tablet" | "desktop";
+  device_model: string | null;
+  os: string | null;
+  browser: string | null;
+  screen_res: string | null;
+  user_agent: string | null;
+}
+
+export interface AnalyticsEvent {
+  id: string;
+  visitor_id: string;
+  session_id: string;
+  event_type: "pageview" | "item_view" | "category_change" | "lead_captured";
+  page_path: string;
+  metadata: Record<string, unknown>;
+  ip: string | null;
+  created_at: string;
+}
+
 /**
  * Hand-authored mirror of the generated Supabase types. The app deliberately
  * does not parameterise its clients with this to keep inference predictable —
@@ -122,6 +153,16 @@ export interface Database {
         Row: SystemSetting;
         Insert: SystemSettingInsert;
         Update: Partial<SystemSettingInsert>;
+      };
+      analytics_visitors: {
+        Row: AnalyticsVisitor;
+        Insert: Partial<AnalyticsVisitor> & { visitor_id: string };
+        Update: Partial<AnalyticsVisitor>;
+      };
+      analytics_events: {
+        Row: AnalyticsEvent;
+        Insert: Omit<AnalyticsEvent, "id" | "created_at">;
+        Update: Partial<AnalyticsEvent>;
       };
     };
     Views: Record<string, never>;

@@ -10,6 +10,7 @@ import {
   Palette,
   Settings2,
   UtensilsCrossed,
+  BarChart3,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -19,6 +20,7 @@ import { createClient } from "@/utils/supabase/client";
 
 const NAV = [
   { href: "/admin", label: "Items", icon: UtensilsCrossed },
+  { href: "/admin/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/admin/theme", label: "Theme", icon: Palette },
   { href: "/admin/settings", label: "Settings", icon: Settings2 },
 ];
