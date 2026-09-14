@@ -45,17 +45,7 @@ const CATEGORIES: CategoryMeta[] = [
 const CACHE_KEY = "foundry_public_menu_cache";
 
 export default function ShopMenuPage() {
-  const [items, setItems] = React.useState<MenuItem[]>(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const cached = sessionStorage.getItem(CACHE_KEY);
-        if (cached) return JSON.parse(cached);
-      } catch {
-        // Fall back to default
-      }
-    }
-    return DEFAULT_MENU_ITEMS;
-  });
+  const [items, setItems] = React.useState<MenuItem[]>(DEFAULT_MENU_ITEMS);
 
   const [activeTab, setActiveTab] = React.useState<"all" | "drinks" | "food">("all");
   const [activeCategory, setActiveCategory] = React.useState<string>("all");
@@ -66,6 +56,19 @@ export default function ShopMenuPage() {
   React.useEffect(() => {
     let isMounted = true;
     const supabase = createClient();
+
+    // Instant local cache recovery post-mount to avoid hydration mismatch
+    try {
+      const cached = sessionStorage.getItem(CACHE_KEY);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0 && isMounted) {
+          setItems(parsed as MenuItem[]);
+        }
+      }
+    } catch {
+      // Non-fatal
+    }
 
     async function fetchLiveMenu() {
       try {
@@ -310,7 +313,7 @@ export default function ShopMenuPage() {
                         <span className="leader" />
 
                         {/* Prices */}
-                        <div className="flex shrink-0 font-semibold tabular-nums text-[#1b1915]">
+                        <span className="flex shrink-0 font-semibold tabular-nums text-[#1b1915]">
                           {(() => {
                             const hasSizePrices =
                               item.price_small != null ||
@@ -357,7 +360,7 @@ export default function ShopMenuPage() {
                               </>
                             );
                           })()}
-                        </div>
+                        </span>
                       </button>
                     );
                   })}

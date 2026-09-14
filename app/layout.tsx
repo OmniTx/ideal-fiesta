@@ -43,7 +43,7 @@ export default function RootLayout({
       className={`${barlow.variable} ${playfair.variable}`}
       suppressHydrationWarning
     >
-      <body className="min-h-screen font-sans">
+      <body className="min-h-screen font-sans" suppressHydrationWarning>
         {children}
         <Toaster position="top-center" richColors closeButton />
       </body>

@@ -81,10 +81,8 @@ function setCachedItems(items: MenuItem[]) {
 
 export function useMenuItems() {
   const supabase = React.useMemo(() => createClient(), []);
-  const [items, setItems] = React.useState<MenuItem[]>(() => getCachedItems());
-  const [isLoading, setIsLoading] = React.useState(
-    () => getCachedItems().length === 0,
-  );
+  const [items, setItems] = React.useState<MenuItem[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [pendingIds, setPendingIds] = React.useState<string[]>([]);
   const pendingIdsRef = React.useRef<string[]>([]);
@@ -118,6 +116,13 @@ export function useMenuItems() {
   }, [supabase]);
 
   React.useEffect(() => {
+    // Post-mount cache recovery to prevent SSR hydration mismatch
+    const cached = getCachedItems();
+    if (cached.length > 0) {
+      setItems(cached);
+      setIsLoading(false);
+    }
+
     void load();
 
     // Subscribe to live updates from other devices/tabs

@@ -136,7 +136,7 @@ export function ShopFooter() {
 
         {/* Base Copyright */}
         <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-[#2d2820] pt-6 text-xs text-[#85806f] sm:flex-row">
-          <p>
+          <p suppressHydrationWarning>
             © {currentYear} Foundry Artisan Coffee. 100% Gluten Free. Brisbane,
             Australia.
           </p>
