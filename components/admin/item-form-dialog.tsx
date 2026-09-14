@@ -31,13 +31,18 @@ interface ItemFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   item?: MenuItem | null;
+  initialValues?: MenuItemFormValues | null;
   onSave: (
     values: MenuItemFormOutput,
     existing: MenuItem | null,
   ) => Promise<boolean>;
 }
 
-function toFormValues(item?: MenuItem | null): MenuItemFormValues {
+function toFormValues(
+  item?: MenuItem | null,
+  initialValues?: MenuItemFormValues | null,
+): MenuItemFormValues {
+  if (initialValues) return initialValues;
   return {
     name: item?.name ?? "",
     category: item?.category ?? "hot_coffee",
@@ -65,18 +70,19 @@ export function ItemFormDialog({
   open,
   onOpenChange,
   item,
+  initialValues,
   onSave,
 }: ItemFormDialogProps) {
   const isEditing = Boolean(item);
 
   const form = useForm<MenuItemFormValues>({
     resolver: zodResolver(menuItemSchema) as unknown as Resolver<MenuItemFormValues>,
-    defaultValues: toFormValues(item),
+    defaultValues: toFormValues(item, initialValues),
   });
 
   React.useEffect(() => {
-    if (open) form.reset(toFormValues(item));
-  }, [open, item, form]);
+    if (open) form.reset(toFormValues(item, initialValues));
+  }, [open, item, initialValues, form]);
 
   const submit = form.handleSubmit(async (values) => {
     const ok = await onSave(values, item ?? null);

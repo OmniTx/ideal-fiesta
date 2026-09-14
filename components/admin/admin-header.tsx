@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   Coffee,
+  ExternalLink,
   LogOut,
   Palette,
   Settings2,
@@ -50,9 +51,14 @@ export function AdminHeader() {
           <span className="grid h-8 w-8 place-items-center rounded-full bg-primary text-primary-foreground">
             <Coffee className="h-4 w-4" />
           </span>
-          <span className="hidden font-display text-sm font-semibold sm:block">
-            Foundry Admin
-          </span>
+          <div className="hidden sm:flex sm:flex-col sm:leading-tight">
+            <span className="font-display text-sm font-semibold">
+              Foundry Admin
+            </span>
+            <span className="text-[10px] text-muted-foreground font-mono">
+              Indooroopilly
+            </span>
+          </div>
         </Link>
 
         <nav
@@ -81,16 +87,31 @@ export function AdminHeader() {
           })}
         </nav>
 
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={signOut}
-          disabled={isSigningOut}
-          aria-label="Sign out"
-          className="shrink-0"
-        >
-          <LogOut className="h-4 w-4" />
-        </Button>
+        <div className="flex items-center gap-1 shrink-0">
+          <Link
+            href="/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={cn(
+              "touch-target hidden items-center gap-1.5 rounded-full border border-border px-3 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:inline-flex",
+            )}
+            title="Open customer storefront in a new tab"
+          >
+            <span>Live Menu</span>
+            <ExternalLink className="h-3 w-3" />
+          </Link>
+
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={signOut}
+            disabled={isSigningOut}
+            aria-label="Sign out"
+            className="shrink-0"
+          >
+            <LogOut className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
     </header>
   );

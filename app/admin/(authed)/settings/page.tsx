@@ -126,7 +126,7 @@ export default function AdminSettingsPage() {
         <CardHeader>
           <CardTitle>Opening hours</CardTitle>
           <CardDescription>
-            Shown in the menu banner. Times are Sydney local.
+            Shown in the menu banner. Times are Brisbane local (AEST - Indooroopilly).
           </CardDescription>
         </CardHeader>
         <CardContent>

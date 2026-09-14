@@ -285,6 +285,74 @@ export function useMenuItems() {
     [supabase],
   );
 
+  const bulkUpdateAvailability = React.useCallback(
+    async (ids: string[], next: boolean): Promise<boolean> => {
+      if (ids.length === 0) return true;
+      const snapshot = itemsRef.current;
+      setItems((current) =>
+        current.map((item) =>
+          ids.includes(item.id) ? { ...item, is_available: next } : item,
+        ),
+      );
+      setPendingIds((current) => [...current, ...ids]);
+
+      const { error: writeError } = await supabase
+        .from("menu_items")
+        .update({ is_available: next })
+        .in("id", ids);
+
+      setPendingIds((current) => current.filter((id) => !ids.includes(id)));
+
+      if (writeError) {
+        setItems(snapshot);
+        toast.error("Bulk update failed", { description: writeError.message });
+        return false;
+      }
+
+      toast.success(
+        next
+          ? `${ids.length} ${ids.length === 1 ? "item" : "items"} marked in stock`
+          : `${ids.length} ${ids.length === 1 ? "item" : "items"} marked sold out`,
+      );
+      return true;
+    },
+    [supabase],
+  );
+
+  const bulkUpdateSpecial = React.useCallback(
+    async (ids: string[], next: boolean): Promise<boolean> => {
+      if (ids.length === 0) return true;
+      const snapshot = itemsRef.current;
+      setItems((current) =>
+        current.map((item) =>
+          ids.includes(item.id) ? { ...item, is_special: next } : item,
+        ),
+      );
+      setPendingIds((current) => [...current, ...ids]);
+
+      const { error: writeError } = await supabase
+        .from("menu_items")
+        .update({ is_special: next })
+        .in("id", ids);
+
+      setPendingIds((current) => current.filter((id) => !ids.includes(id)));
+
+      if (writeError) {
+        setItems(snapshot);
+        toast.error("Bulk update failed", { description: writeError.message });
+        return false;
+      }
+
+      toast.success(
+        next
+          ? `${ids.length} ${ids.length === 1 ? "item" : "items"} added to specials`
+          : `${ids.length} ${ids.length === 1 ? "item" : "items"} removed from specials`,
+      );
+      return true;
+    },
+    [supabase],
+  );
+
   return {
     items,
     isLoading,
@@ -296,5 +364,7 @@ export function useMenuItems() {
     updatePrices,
     saveItem,
     deleteItem,
+    bulkUpdateAvailability,
+    bulkUpdateSpecial,
   };
 }
