@@ -15,8 +15,10 @@ import {
   ShieldCheck,
   Coffee,
 } from "lucide-react";
+import { useStoreSettings } from "@/lib/hooks/use-store-settings";
 
 export function ShopHeader() {
+  const { openingHours } = useStoreSettings();
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const pathname = usePathname();
 
@@ -113,7 +115,7 @@ export function ShopHeader() {
             </Link>
 
             <Link
-              href="https://instagram.com"
+              href="https://www.instagram.com/foundry_artisancoffee/"
               target="_blank"
               rel="noopener noreferrer"
               className="grid h-10 w-10 place-items-center rounded-full text-[#1b1915] transition hover:bg-[#eae5d2]"
@@ -217,6 +219,16 @@ export function ShopHeader() {
                 <MapPin className="h-4 w-4 text-[#6e6a5a]" />
               </Link>
               <Link
+                href="https://www.instagram.com/foundry_artisancoffee/"
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => setDrawerOpen(false)}
+                className="flex items-center justify-between py-4 text-sm font-semibold tracking-wider uppercase text-[#1b1915] hover:text-[#46543a]"
+              >
+                <span>Instagram @foundry_artisancoffee</span>
+                <Instagram className="h-4 w-4" />
+              </Link>
+              <Link
                 href="/admin"
                 onClick={() => setDrawerOpen(false)}
                 className="flex items-center justify-between py-4 text-sm font-semibold tracking-wider uppercase text-[#6e6a5a] hover:text-[#1b1915]"
@@ -233,10 +245,12 @@ export function ShopHeader() {
                 <span>Today&apos;s Hours</span>
               </div>
               <p className="mt-1 font-display text-lg font-bold text-[#1b1915]">
-                Open from 6:30am
+                {openingHours.rows.length > 0
+                  ? openingHours.rows[0].value
+                  : "7:30am – 2:30pm"}
               </p>
               <p className="mt-1 text-xs text-[#6e6a5a]">
-                Level 3, Indooroopilly Shopping Centre (near Event Cinemas)
+                Level 3, Indooroopilly Shopping Centre (near Cotton On)
               </p>
             </div>
           </div>

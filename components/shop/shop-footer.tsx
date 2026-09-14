@@ -31,13 +31,13 @@ export function ShopFooter() {
             </p>
             <div className="flex items-center gap-3 pt-2">
               <Link
-                href="https://instagram.com"
+                href="https://www.instagram.com/foundry_artisancoffee/"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-1.5 text-xs text-[#cfc9b4] hover:text-[#f3f0e1]"
               >
                 <Instagram className="h-4 w-4" />
-                <span>@foundryartisancoffee</span>
+                <span>@foundry_artisancoffee</span>
               </Link>
             </div>
           </div>
