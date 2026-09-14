@@ -94,43 +94,66 @@ export function detectDevice(): DeviceInfo {
   // 2. Phone / Device Model Detection
   let deviceModel = deviceType === "desktop" ? "PC / Mac" : "Mobile Device";
 
+  // Extract raw Android model tag (e.g., "SM-S928B", "Pixel 7a", "CPH2211")
+  const androidModelMatch = ua.match(/Android [^;]+;\s*([^;)]+?)(?:\s*Build|\)|;)/i);
+  const rawModel = androidModelMatch ? androidModelMatch[1].trim() : "";
+
   // Check Samsung Galaxy models
-  const smMatch = ua.match(/SM-([A-Z0-9]+)/i);
+  const smMatch = ua.match(/SM-([A-Z0-9]+)/i) || (rawModel.startsWith("SM-") ? [null, rawModel.slice(3)] : null);
   if (smMatch) {
     const code = smMatch[1].toUpperCase();
     if (code.startsWith("G988")) deviceModel = "Samsung Galaxy S20 Ultra";
-    else if (code.startsWith("G98")) deviceModel = "Samsung Galaxy S20";
+    else if (code.startsWith("G985")) deviceModel = "Samsung Galaxy S20+";
+    else if (code.startsWith("G980") || code.startsWith("G981")) deviceModel = "Samsung Galaxy S20";
+    else if (code.startsWith("G780") || code.startsWith("G781")) deviceModel = "Samsung Galaxy S20 FE";
     else if (code.startsWith("G998")) deviceModel = "Samsung Galaxy S21 Ultra";
-    else if (code.startsWith("G99")) deviceModel = "Samsung Galaxy S21";
+    else if (code.startsWith("G996")) deviceModel = "Samsung Galaxy S21+";
+    else if (code.startsWith("G990") || code.startsWith("G991")) deviceModel = "Samsung Galaxy S21";
+    else if (code.startsWith("G990B")) deviceModel = "Samsung Galaxy S21 FE";
     else if (code.startsWith("S908")) deviceModel = "Samsung Galaxy S22 Ultra";
-    else if (code.startsWith("S90")) deviceModel = "Samsung Galaxy S22";
+    else if (code.startsWith("S906")) deviceModel = "Samsung Galaxy S22+";
+    else if (code.startsWith("S901")) deviceModel = "Samsung Galaxy S22";
     else if (code.startsWith("S918")) deviceModel = "Samsung Galaxy S23 Ultra";
-    else if (code.startsWith("S91")) deviceModel = "Samsung Galaxy S23";
+    else if (code.startsWith("S916")) deviceModel = "Samsung Galaxy S23+";
+    else if (code.startsWith("S911")) deviceModel = "Samsung Galaxy S23";
     else if (code.startsWith("S928")) deviceModel = "Samsung Galaxy S24 Ultra";
-    else if (code.startsWith("S92")) deviceModel = "Samsung Galaxy S24";
+    else if (code.startsWith("S926")) deviceModel = "Samsung Galaxy S24+";
+    else if (code.startsWith("S921")) deviceModel = "Samsung Galaxy S24";
+    else if (code.startsWith("F946") || code.startsWith("F956")) deviceModel = "Samsung Galaxy Z Fold";
+    else if (code.startsWith("F731") || code.startsWith("F741")) deviceModel = "Samsung Galaxy Z Flip";
     else if (code.startsWith("A54")) deviceModel = "Samsung Galaxy A54";
     else if (code.startsWith("A53")) deviceModel = "Samsung Galaxy A53";
+    else if (code.startsWith("A52")) deviceModel = "Samsung Galaxy A52";
+    else if (code.startsWith("A34") || code.startsWith("A35")) deviceModel = "Samsung Galaxy A3x";
     else if (code.startsWith("A")) deviceModel = `Samsung Galaxy A-Series (${code})`;
     else deviceModel = `Samsung Galaxy (${code})`;
   } else if (/samsung/i.test(ua)) {
-    deviceModel = "Samsung Mobile";
+    deviceModel = rawModel ? `Samsung (${rawModel})` : "Samsung Mobile";
   } else if (/iphone/i.test(ua)) {
-    if (width === 430 && height === 932) deviceModel = "Apple iPhone 15 Pro Max / 16 Pro Max";
-    else if (width === 393 && height === 852) deviceModel = "Apple iPhone 14/15 Pro";
-    else if (width === 390 && height === 844) deviceModel = "Apple iPhone 12/13/14";
-    else if (width === 414 && height === 896) deviceModel = "Apple iPhone 11 / XR";
+    if ((width === 430 && height === 932) || (width === 932 && height === 430)) deviceModel = "Apple iPhone 15/16 Pro Max";
+    else if ((width === 393 && height === 852) || (width === 852 && height === 393)) deviceModel = "Apple iPhone 14/15/16 Pro";
+    else if ((width === 390 && height === 844) || (width === 844 && height === 390)) deviceModel = "Apple iPhone 12/13/14";
+    else if ((width === 414 && height === 896) || (width === 896 && height === 414)) deviceModel = "Apple iPhone 11 / XR / XS Max";
+    else if ((width === 375 && height === 812) || (width === 812 && height === 375)) deviceModel = "Apple iPhone X / XS / 11 Pro / 12 mini";
+    else if ((width === 375 && height === 667) || (width === 667 && height === 375)) deviceModel = "Apple iPhone SE / 8 / 7";
     else deviceModel = "Apple iPhone";
   } else if (/ipad/i.test(ua)) {
     deviceModel = "Apple iPad";
   } else if (/pixel/i.test(ua)) {
     const pMatch = ua.match(/Pixel\s?([0-9a-zA-Z ]+)/i);
-    deviceModel = pMatch ? `Google Pixel ${pMatch[1]}` : "Google Pixel";
+    deviceModel = pMatch ? `Google Pixel ${pMatch[1]}` : (rawModel || "Google Pixel");
   } else if (/xiaomi|redmi|poco/i.test(ua)) {
-    deviceModel = "Xiaomi / Redmi";
-  } else if (/oppo/i.test(ua)) {
-    deviceModel = "OPPO Mobile";
+    deviceModel = rawModel ? `Xiaomi / Redmi (${rawModel})` : "Xiaomi / Redmi";
+  } else if (/oppo|cph/i.test(ua)) {
+    deviceModel = rawModel ? `OPPO (${rawModel})` : "OPPO Mobile";
   } else if (/oneplus/i.test(ua)) {
-    deviceModel = "OnePlus Mobile";
+    deviceModel = rawModel ? `OnePlus (${rawModel})` : "OnePlus Mobile";
+  } else if (/vivo|v2[0-9]{3}/i.test(ua)) {
+    deviceModel = rawModel ? `vivo (${rawModel})` : "vivo Mobile";
+  } else if (/realme|rmx/i.test(ua)) {
+    deviceModel = rawModel ? `realme (${rawModel})` : "realme Mobile";
+  } else if (rawModel && deviceType === "mobile") {
+    deviceModel = rawModel;
   } else if (/macintosh/i.test(ua)) {
     deviceModel = "Apple Mac";
   } else if (/windows/i.test(ua)) {
@@ -267,6 +290,20 @@ async function recordToTelemetryStore(
   visitor: Partial<AnalyticsVisitor> & { visitor_id: string },
   event?: { event_type: string; page_path: string; metadata?: Record<string, unknown> },
 ) {
+  // 1. Primary: Serverless telemetry ingestion endpoint (Cloudflare Pages Function, uses Service Role Key)
+  try {
+    const res = await fetch("/api/telemetry", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ visitor, event }),
+      keepalive: true,
+    });
+    if (res.ok) return;
+  } catch {
+    // API endpoint not reachable (e.g. running outside Cloudflare Pages)
+  }
+
+  // 2. Secondary fallback: Direct Supabase client upsert (succeeds for authenticated admin)
   try {
     const supabase = createClient();
     const { data } = await supabase

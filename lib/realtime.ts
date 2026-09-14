@@ -20,6 +20,16 @@ export async function broadcastRealtimeEvent(
   try {
     const supabase = createClient();
     const channel = supabase.channel(REALTIME_CHANNEL);
+
+    await new Promise<void>((resolve) => {
+      channel.subscribe((status) => {
+        if (status === "SUBSCRIBED" || status === "TIMED_OUT" || status === "CHANNEL_ERROR") {
+          resolve();
+        }
+      });
+      setTimeout(resolve, 600);
+    });
+
     await channel.send({
       type: "broadcast",
       event,
@@ -40,7 +50,7 @@ export function subscribeToMenuChanges(onUpdate: () => void): () => void {
   if (typeof window === "undefined") return () => {};
 
   const supabase = createClient();
-  const channel = supabase.channel(`menu-sync-${Math.random().toString(36).substring(2, 9)}`);
+  const channel = supabase.channel(REALTIME_CHANNEL);
 
   channel
     .on("broadcast", { event: "menu_updated" }, () => {
@@ -83,7 +93,7 @@ export function subscribeToSettingsChanges(
   if (typeof window === "undefined") return () => {};
 
   const supabase = createClient();
-  const channel = supabase.channel(`settings-sync-${Math.random().toString(36).substring(2, 9)}`);
+  const channel = supabase.channel(REALTIME_CHANNEL);
 
   channel
     .on("broadcast", { event: "settings_updated" }, (payload) => {
@@ -124,23 +134,11 @@ export function subscribeToAnalytics(
   if (typeof window === "undefined") return () => {};
 
   const supabase = createClient();
-  const channel = supabase.channel(
-    `analytics-sync-${Math.random().toString(36).substring(2, 9)}`,
-  );
+  const channel = supabase.channel(REALTIME_CHANNEL);
 
   channel
     .on("broadcast", { event: "analytics_event" }, (p) => onUpdate(p))
     .on("broadcast", { event: "lead_captured" }, (p) => onUpdate(p))
-    .on(
-      "postgres_changes",
-      { event: "*", schema: "public", table: "analytics_visitors" },
-      (p) => onUpdate(p),
-    )
-    .on(
-      "postgres_changes",
-      { event: "*", schema: "public", table: "analytics_events" },
-      (p) => onUpdate(p),
-    )
     .subscribe();
 
   return () => {
