@@ -17,10 +17,11 @@ export async function broadcastRealtimeEvent(
   payload?: Record<string, unknown>,
 ): Promise<void> {
   if (typeof window === "undefined") return;
-  try {
-    const supabase = createClient();
-    const channel = supabase.channel(REALTIME_CHANNEL);
 
+  const supabase = createClient();
+  const channel = supabase.channel(REALTIME_CHANNEL);
+
+  try {
     await new Promise<void>((resolve) => {
       channel.subscribe((status) => {
         if (status === "SUBSCRIBED" || status === "TIMED_OUT" || status === "CHANNEL_ERROR") {
@@ -37,6 +38,9 @@ export async function broadcastRealtimeEvent(
     });
   } catch (err) {
     console.warn("[Realtime] Broadcast notice error:", err);
+  } finally {
+    // One-shot channel — release it so long sessions don't accumulate them.
+    void supabase.removeChannel(channel);
   }
 }
 

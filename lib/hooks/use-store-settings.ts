@@ -1,8 +1,11 @@
 "use client";
 
 import * as React from "react";
-import { createClient } from "@/utils/supabase/client";
+
+import { subscribeToSettingsChanges } from "@/lib/realtime";
+import { findTodayHours } from "@/lib/time";
 import type { OpeningHours, SurchargeNotice } from "@/lib/types/database";
+import { createClient } from "@/utils/supabase/client";
 
 export const DEFAULT_OPENING_HOURS: OpeningHours = {
   rows: [
@@ -19,8 +22,11 @@ export const DEFAULT_SURCHARGE: SurchargeNotice = {
   text: "A 10% surcharge applies on public holidays.",
 };
 
-import { subscribeToSettingsChanges } from "@/lib/realtime";
-
+/**
+ * Live store settings (opening hours + surcharge). Reads straight from
+ * system_settings and refreshes on the realtime `settings_updated` broadcast,
+ * so an admin edit lands on open storefront tabs without a reload.
+ */
 export function useStoreSettings() {
   const [openingHours, setOpeningHours] =
     React.useState<OpeningHours>(DEFAULT_OPENING_HOURS);
@@ -39,57 +45,40 @@ export function useStoreSettings() {
           .select("key, value")
           .in("key", ["opening_hours", "surcharge_notice"]);
 
-        if (error || !data) return;
+        if (error || !data || !isMounted) return;
 
-        if (isMounted) {
-          data.forEach((row) => {
-            if (
-              row.key === "opening_hours" &&
-              row.value &&
-              typeof row.value === "object"
-            ) {
-              const val = row.value as OpeningHours;
-              if (Array.isArray(val.rows) && val.rows.length > 0) {
-                // Ensure weekend / holiday row exists if not present in custom row list
-                const hasWeekend = val.rows.some((r) =>
-                  /saturday|sunday|weekend/i.test(r.label),
-                );
-                const hasHoliday = val.rows.some((r) =>
-                  /holiday/i.test(r.label),
-                );
-
-                const mergedRows = [...val.rows];
-                if (!hasWeekend) {
-                  mergedRows.push({ label: "Saturday & Sunday", value: "Closed" });
-                }
-                if (!hasHoliday) {
-                  mergedRows.push({ label: "Public Holidays", value: "Closed" });
-                }
-
-                setOpeningHours({
-                  rows: mergedRows,
-                  note: val.note || DEFAULT_OPENING_HOURS.note,
-                });
-              }
-            }
-            if (
-              row.key === "surcharge_notice" &&
-              row.value &&
-              typeof row.value === "object"
-            ) {
-              const val = row.value as SurchargeNotice;
-              setSurcharge({
-                enabled: Boolean(val.enabled),
-                text:
-                  typeof val.text === "string"
-                    ? val.text
-                    : DEFAULT_SURCHARGE.text,
+        data.forEach((row) => {
+          if (
+            row.key === "opening_hours" &&
+            row.value &&
+            typeof row.value === "object"
+          ) {
+            const value = row.value as OpeningHours;
+            if (Array.isArray(value.rows) && value.rows.length > 0) {
+              setOpeningHours({
+                rows: value.rows,
+                note: value.note || DEFAULT_OPENING_HOURS.note,
               });
             }
-          });
-        }
+          }
+
+          if (
+            row.key === "surcharge_notice" &&
+            row.value &&
+            typeof row.value === "object"
+          ) {
+            const value = row.value as SurchargeNotice;
+            setSurcharge({
+              enabled: Boolean(value.enabled),
+              text:
+                typeof value.text === "string"
+                  ? value.text
+                  : DEFAULT_SURCHARGE.text,
+            });
+          }
+        });
       } catch {
-        // gracefully retain default values
+        // Keep the defaults.
       } finally {
         if (isMounted) setLoading(false);
       }
@@ -97,7 +86,6 @@ export function useStoreSettings() {
 
     void load();
 
-    // Subscribe to realtime updates for settings (hours & surcharge)
     const unsubscribe = subscribeToSettingsChanges(() => {
       void load();
     });
@@ -108,6 +96,10 @@ export function useStoreSettings() {
     };
   }, []);
 
-  return { openingHours, surcharge, loading };
+  return {
+    openingHours,
+    surcharge,
+    todayHours: findTodayHours(openingHours.rows),
+    loading,
+  };
 }
-

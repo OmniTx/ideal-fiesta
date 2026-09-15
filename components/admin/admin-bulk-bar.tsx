@@ -24,7 +24,7 @@ export function AdminBulkBar({
   if (selectedCount === 0) return null;
 
   return (
-    <div className="fixed bottom-5 left-1/2 z-50 -translate-x-1/2 w-[calc(100%-2rem)] max-w-xl animate-in fade-in slide-in-from-bottom-4 duration-200">
+    <div className="fixed inset-x-4 bottom-5 z-50 mx-auto max-w-xl animate-slide-up">
       <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-border/80 bg-card/95 p-3 shadow-xl backdrop-blur-md">
         <div className="flex items-center gap-2 pl-1">
           <span className="grid h-6 w-6 place-items-center rounded-full bg-primary text-primary-foreground text-xs font-bold tabular-nums">

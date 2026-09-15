@@ -86,28 +86,28 @@ export default function ShopSpecialsPage() {
   }, []);
 
   return (
-    <div className="bg-[#f3f0e1] pb-24">
+    <div className="bg-background pb-24">
       {/* Hero Spotlight Section */}
-      <section className="border-b border-[#dbd5c0] bg-[#46543a] px-4 py-16 text-[#f2f1e4] sm:px-6 sm:py-20">
+      <section className="border-b border-border bg-primary px-4 py-16 text-primary-foreground sm:px-6 sm:py-20">
         <div className="mx-auto max-w-4xl">
           <Link
             href="/menu"
-            className="inline-flex items-center gap-2 text-xs font-semibold tracking-wider uppercase text-[#cfd8bd] transition hover:text-white"
+            className="inline-flex items-center gap-2 text-xs font-semibold tracking-wider uppercase text-primary-foreground/80 transition hover:text-primary-foreground"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
             <span>Full Menu Catalog</span>
           </Link>
 
-          <div className="mt-6 flex items-center gap-2 text-xs font-semibold tracking-wider uppercase text-[#cfd8bd]">
+          <div className="mt-6 flex items-center gap-2 text-xs font-semibold tracking-wider uppercase text-primary-foreground/80">
             <Sparkles className="h-4 w-4" />
             <span>Chef&apos;s Counter Selection</span>
           </div>
 
-          <h1 className="mt-2 font-display text-4xl font-black tracking-tight text-white sm:text-6xl">
+          <h1 className="mt-2 font-display text-4xl font-black tracking-tight text-primary-foreground sm:text-6xl">
             Foundry Specials
           </h1>
 
-          <p className="mt-4 max-w-xl text-lg leading-relaxed text-[#e3e5d4]">
+          <p className="mt-4 max-w-xl text-lg leading-relaxed text-primary-foreground/90">
             Seasonal rotations and signature plates. Every dish is 100% gluten
             free, prepared to order on Level 3 of Indooroopilly Shopping Centre.
           </p>
@@ -115,7 +115,7 @@ export default function ShopSpecialsPage() {
       </section>
 
       {/* Notice Ribbon */}
-      <div className="border-b border-[#dbd5c0] bg-[#eae5d2] px-4 py-2 text-center text-xs font-medium text-[#6e6a5a]">
+      <div className="border-b border-border bg-muted px-4 py-2 text-center text-xs font-medium text-muted-foreground">
         <span>
           Made to order daily · Ask our barista for today&apos;s seasonal baker
           rotation
@@ -134,41 +134,41 @@ export default function ShopSpecialsPage() {
             return (
               <div
                 key={item.id}
-                className="flex flex-col justify-between rounded-2xl border border-[#dbd5c0] bg-white/70 p-6 shadow-xs transition hover:border-[#1b1915]/40 hover:bg-white"
+                className="flex flex-col justify-between rounded-2xl border border-border bg-card/70 p-6 shadow-sm transition hover:border-foreground/40 hover:bg-card"
               >
                 <div>
                   <div className="flex items-start justify-between gap-4">
-                    <h2 className="font-display text-2xl font-bold text-[#1b1915]">
+                    <h2 className="font-display text-2xl font-bold text-foreground">
                       {item.name}
                     </h2>
-                    <span className="shrink-0 font-display text-xl font-bold text-[#1b1915]">
+                    <span className="shrink-0 font-display text-xl font-bold text-foreground">
                       ${(item.price_single ?? item.price_medium ?? 0).toFixed(2)}
                     </span>
                   </div>
 
                   {item.description && (
-                    <p className="mt-3 text-sm leading-relaxed text-[#6e6a5a]">
+                    <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
                       {item.description}
                     </p>
                   )}
 
                   {/* Barista Pairing Callout */}
-                  <div className="mt-6 rounded-xl border border-[#dbd5c0] bg-[#f3f0e1]/70 p-4 text-xs">
-                    <div className="flex items-center gap-1.5 font-semibold text-[#46543a] uppercase tracking-wider">
+                  <div className="mt-6 rounded-xl border border-border bg-background/70 p-4 text-xs">
+                    <div className="flex items-center gap-1.5 font-semibold text-primary uppercase tracking-wider">
                       <Coffee className="h-3.5 w-3.5" />
                       <span>Barista Pairing</span>
                     </div>
-                    <p className="mt-1 font-medium text-[#1b1915]">
+                    <p className="mt-1 font-medium text-foreground">
                       {pairing.drink}
                     </p>
-                    <p className="mt-1 text-[#6e6a5a] leading-normal">
+                    <p className="mt-1 text-muted-foreground leading-normal">
                       {pairing.note}
                     </p>
                   </div>
                 </div>
 
-                <div className="mt-8 flex items-center justify-between border-t border-[#dbd5c0] pt-4">
-                  <span className="flex items-center gap-1.5 text-xs text-[#46543a]">
+                <div className="mt-8 flex items-center justify-between border-t border-border pt-4">
+                  <span className="flex items-center gap-1.5 text-xs text-primary">
                     <ShieldCheck className="h-3.5 w-3.5" />
                     <span>100% Gluten Free</span>
                   </span>
@@ -179,7 +179,7 @@ export default function ShopSpecialsPage() {
                       setSelectedItem(item);
                       void trackItemClick(item.name, "specials");
                     }}
-                    className="rounded-full bg-[#1b1915] px-4 py-2 text-xs font-semibold text-[#f3f0e1] transition hover:bg-[#3b2a1e]"
+                    className="rounded-full bg-foreground px-4 py-2 text-xs font-semibold text-background transition hover:bg-foreground/85"
                   >
                     View Options & Sides
                   </button>
@@ -193,9 +193,9 @@ export default function ShopSpecialsPage() {
         <div className="mt-16 text-center">
           <Link
             href="/menu"
-            className="inline-block rounded-full border border-[#1b1915] px-8 py-3 text-sm font-semibold tracking-wider text-[#1b1915] uppercase transition hover:bg-[#1b1915] hover:text-[#f3f0e1]"
+            className="inline-block rounded-full border border-foreground px-8 py-3 text-sm font-semibold tracking-wider text-foreground uppercase transition hover:bg-foreground hover:text-background"
           >
-            Explore all 58 menu items
+            Explore the full menu
           </Link>
         </div>
       </div>

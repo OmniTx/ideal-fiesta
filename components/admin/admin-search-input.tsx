@@ -50,7 +50,7 @@ export function AdminSearchInput({
         placeholder={placeholder}
         aria-label="Search menu items"
         className={cn(
-          "h-10 w-full rounded-full border border-border bg-card pl-9 pr-9 text-sm text-foreground shadow-xs transition-colors",
+          "h-10 w-full rounded-full border border-border bg-card pl-9 pr-9 text-sm text-foreground shadow-sm transition-colors",
           "placeholder:text-muted-foreground/70",
           "focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20",
           "[&::-webkit-search-cancel-button]:hidden",

@@ -9,7 +9,7 @@ export default function ShopLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-[#f3f0e1] text-[#1b1915] selection:bg-[#46543a] selection:text-[#f3f0e1]">
+    <div className="min-h-screen bg-background text-foreground selection:bg-primary selection:text-background">
       <ShopHeader />
       <main className="min-h-[calc(100vh-16rem)]">{children}</main>
       <ShopFooter />

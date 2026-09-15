@@ -37,7 +37,7 @@ export function AdminMetricsBar({
           "flex flex-col gap-0.5 rounded-xl border p-3 text-left transition-all",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
           statusFilter === "all"
-            ? "border-primary bg-primary/10 shadow-xs ring-1 ring-primary/30"
+            ? "border-primary bg-primary/10 shadow-sm ring-1 ring-primary/30"
             : "border-border bg-card hover:border-border/80 hover:bg-muted/40",
         )}
       >
@@ -57,7 +57,7 @@ export function AdminMetricsBar({
           "flex flex-col gap-0.5 rounded-xl border p-3 text-left transition-all",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
           statusFilter === "in_stock"
-            ? "border-emerald-600/40 bg-emerald-500/10 shadow-xs ring-1 ring-emerald-600/30 dark:border-emerald-500/40"
+            ? "border-emerald-600/40 bg-emerald-500/10 shadow-sm ring-1 ring-emerald-600/30 dark:border-emerald-500/40"
             : "border-border bg-card hover:border-border/80 hover:bg-muted/40",
         )}
       >
@@ -80,7 +80,7 @@ export function AdminMetricsBar({
           "flex flex-col gap-0.5 rounded-xl border p-3 text-left transition-all",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
           statusFilter === "sold_out"
-            ? "border-amber-600/40 bg-amber-500/10 shadow-xs ring-1 ring-amber-600/30 dark:border-amber-500/40"
+            ? "border-amber-600/40 bg-amber-500/10 shadow-sm ring-1 ring-amber-600/30 dark:border-amber-500/40"
             : "border-border bg-card hover:border-border/80 hover:bg-muted/40",
         )}
       >
@@ -103,7 +103,7 @@ export function AdminMetricsBar({
           "flex flex-col gap-0.5 rounded-xl border p-3 text-left transition-all",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
           statusFilter === "specials"
-            ? "border-primary bg-primary/10 shadow-xs ring-1 ring-primary/30"
+            ? "border-primary bg-primary/10 shadow-sm ring-1 ring-primary/30"
             : "border-border bg-card hover:border-border/80 hover:bg-muted/40",
         )}
       >

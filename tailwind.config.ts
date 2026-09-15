@@ -62,6 +62,25 @@ const config: Config = {
           "sans-serif",
         ],
       },
+      keyframes: {
+        "slide-up": {
+          from: { opacity: "0", transform: "translateY(1rem)" },
+          to: { opacity: "1", transform: "translateY(0)" },
+        },
+        "overlay-in": {
+          from: { opacity: "0" },
+          to: { opacity: "1" },
+        },
+        "scale-in": {
+          from: { opacity: "0", transform: "scale(0.97)" },
+          to: { opacity: "1", transform: "scale(1)" },
+        },
+      },
+      animation: {
+        "slide-up": "slide-up 220ms cubic-bezier(0.2, 0.7, 0.3, 1)",
+        "overlay-in": "overlay-in 180ms ease-out",
+        "scale-in": "scale-in 180ms ease-out",
+      },
     },
   },
   plugins: [],

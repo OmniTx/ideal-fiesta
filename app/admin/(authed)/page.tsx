@@ -302,7 +302,7 @@ export default function AdminItemsPage() {
         ) : null}
 
         {!error && !isLoading && visibleItems.length > 0 ? (
-          <Card className="border-border/80 shadow-xs">
+          <Card className="border-border/80 shadow-sm">
             <CardContent className="px-3 py-1 sm:px-5">
               <ItemsTable
                 items={visibleItems}

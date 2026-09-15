@@ -1,13 +1,12 @@
 "use client";
 
-import { createClient } from "@/utils/supabase/client";
 import { broadcastRealtimeEvent } from "@/lib/realtime";
+import { createClient } from "@/utils/supabase/client";
 import type { AnalyticsVisitor } from "@/lib/types/database";
 
 const VISITOR_KEY = "foundry_visitor_id";
 const SESSION_KEY = "foundry_session_id";
 const GEO_CACHE_KEY = "foundry_geo_cache_v3";
-const LOCAL_TELEMETRY_KEY = "foundry_local_telemetry";
 
 export interface DeviceInfo {
   deviceType: "mobile" | "tablet" | "desktop";
@@ -25,16 +24,11 @@ export interface GeoInfo {
   country: string | null;
 }
 
-/**
- * Generates a random alphanumeric ID
- */
 function uid(prefix = "v"): string {
   return `${prefix}_${Math.random().toString(36).substring(2, 11)}_${Date.now().toString(36)}`;
 }
 
-/**
- * Retrieve or create persistent visitor ID (persisted across sessions in localStorage)
- */
+/** Persistent visitor ID, stable across sessions on this device. */
 export function getVisitorId(): string {
   if (typeof window === "undefined") return "ssr";
   try {
@@ -49,9 +43,7 @@ export function getVisitorId(): string {
   }
 }
 
-/**
- * Retrieve or create session ID (reset when the tab/browser is closed)
- */
+/** Session ID, reset when the tab/browser is closed. */
 export function getSessionId(): string {
   if (typeof window === "undefined") return "ssr";
   try {
@@ -66,9 +58,7 @@ export function getSessionId(): string {
   }
 }
 
-/**
- * Parse phone model and device details from User-Agent and viewport
- */
+/** Best-effort device classification from UA string and viewport. */
 export function detectDevice(): DeviceInfo {
   if (typeof window === "undefined") {
     return {
@@ -86,19 +76,15 @@ export function detectDevice(): DeviceInfo {
   const height = window.screen?.height || window.innerHeight || 0;
   const screenRes = `${width}x${height}`;
 
-  // 1. Device Type
   const isTablet = /(ipad|tablet|(android(?!.*mobile))|(windows(?!.*phone)(.*touch))|kindle)/i.test(ua);
   const isMobile = !isTablet && (/mobile|iphone|ipod|android|blackberry|opera mini|iemobile|wpdesktop/i.test(ua) || width <= 768);
   const deviceType: "mobile" | "tablet" | "desktop" = isTablet ? "tablet" : isMobile ? "mobile" : "desktop";
 
-  // 2. Phone / Device Model Detection
   let deviceModel = deviceType === "desktop" ? "PC / Mac" : "Mobile Device";
 
-  // Extract raw Android model tag (e.g., "SM-S928B", "Pixel 7a", "CPH2211")
   const androidModelMatch = ua.match(/Android [^;]+;\s*([^;)]+?)(?:\s*Build|\)|;)/i);
   const rawModel = androidModelMatch ? androidModelMatch[1].trim() : "";
 
-  // Check Samsung Galaxy models
   const smMatch = ua.match(/SM-([A-Z0-9]+)/i) || (rawModel.startsWith("SM-") ? [null, rawModel.slice(3)] : null);
   if (smMatch) {
     const code = smMatch[1].toUpperCase();
@@ -109,7 +95,6 @@ export function detectDevice(): DeviceInfo {
     else if (code.startsWith("G998")) deviceModel = "Samsung Galaxy S21 Ultra";
     else if (code.startsWith("G996")) deviceModel = "Samsung Galaxy S21+";
     else if (code.startsWith("G990") || code.startsWith("G991")) deviceModel = "Samsung Galaxy S21";
-    else if (code.startsWith("G990B")) deviceModel = "Samsung Galaxy S21 FE";
     else if (code.startsWith("S908")) deviceModel = "Samsung Galaxy S22 Ultra";
     else if (code.startsWith("S906")) deviceModel = "Samsung Galaxy S22+";
     else if (code.startsWith("S901")) deviceModel = "Samsung Galaxy S22";
@@ -160,7 +145,6 @@ export function detectDevice(): DeviceInfo {
     deviceModel = "Windows PC";
   }
 
-  // 3. Operating System
   let os = "Unknown OS";
   if (/android/i.test(ua)) {
     const ver = ua.match(/android\s([0-9.]+)/i);
@@ -173,7 +157,6 @@ export function detectDevice(): DeviceInfo {
   else if (/mac os x/i.test(ua)) os = "macOS";
   else if (/linux/i.test(ua)) os = "Linux";
 
-  // 4. Browser
   let browser = "Browser";
   if (/edg/i.test(ua)) browser = "Microsoft Edge";
   else if (/chrome|crios/i.test(ua)) browser = "Google Chrome";
@@ -190,9 +173,7 @@ export function detectDevice(): DeviceInfo {
   };
 }
 
-/**
- * Fetch real public IP and Geo information (cached in sessionStorage for session duration)
- */
+/** Real public IP + geo, cached for the session. Three providers, all HTTPS+CORS. */
 export async function getGeoInfo(): Promise<GeoInfo> {
   if (typeof window === "undefined") {
     return { ip: null, city: null, region: null, country: null };
@@ -208,7 +189,6 @@ export async function getGeoInfo(): Promise<GeoInfo> {
     // ignore
   }
 
-  // 1. Primary: ipwho.is (fast, HTTPS, CORS enabled, accurate city/region/country)
   try {
     const res = await fetch("https://ipwho.is/", {
       signal: AbortSignal.timeout(3000),
@@ -229,10 +209,9 @@ export async function getGeoInfo(): Promise<GeoInfo> {
       }
     }
   } catch {
-    // Try fallback
+    // try fallback
   }
 
-  // 2. Fallback: freeipapi.com
   try {
     const res = await fetch("https://freeipapi.com/api/json", {
       signal: AbortSignal.timeout(3000),
@@ -253,10 +232,9 @@ export async function getGeoInfo(): Promise<GeoInfo> {
       }
     }
   } catch {
-    // Try ipify
+    // try ipify
   }
 
-  // 3. Fallback: ipify (IP only, no fake city or country)
   try {
     const res = await fetch("https://api.ipify.org?format=json", {
       signal: AbortSignal.timeout(2500),
@@ -283,90 +261,49 @@ export async function getGeoInfo(): Promise<GeoInfo> {
   return { ip: null, city: null, region: null, country: null };
 }
 
+type VisitorUpsert = Partial<Omit<AnalyticsVisitor, "total_visits" | "first_seen">> & {
+  visitor_id: string;
+};
+
+interface EventInsert {
+  visitor_id: string;
+  session_id: string;
+  event_type: "pageview" | "item_view" | "category_change" | "lead_captured";
+  page_path: string;
+  metadata?: Record<string, unknown>;
+  ip?: string | null;
+}
+
 /**
- * Saves a visitor snapshot into system_settings telemetry store in Supabase
- * Only executes direct database writes if an authenticated session is active,
- * ensuring anonymous storefront visits never produce 401/405 errors in the browser console.
+ * Persist a visitor snapshot. RLS allows anonymous insert/update on
+ * analytics_visitors, so this works for every visitor — no admin session or
+ * open dashboard required. Only the columns passed in are written, so a plain
+ * pageview never clobbers a previously captured name/phone/email.
  */
-async function recordToTelemetryStore(
-  visitor: Partial<AnalyticsVisitor> & { visitor_id: string },
-  event?: { event_type: string; page_path: string; metadata?: Record<string, unknown> },
-) {
-  if (typeof window === "undefined") return;
-
-  // 1. Cache telemetry locally in the visitor's browser
-  try {
-    const cached = localStorage.getItem("foundry_telemetry_cache");
-    const local = cached ? JSON.parse(cached) : { visitors: {}, events: [] };
-    local.visitors[visitor.visitor_id] = {
-      ...(local.visitors[visitor.visitor_id] || {}),
-      ...visitor,
-      last_seen: new Date().toISOString(),
-    };
-    if (event) {
-      local.events = [{ ...event, visitor_id: visitor.visitor_id, created_at: new Date().toISOString() }, ...(local.events || [])].slice(0, 50);
-    }
-    localStorage.setItem("foundry_telemetry_cache", JSON.stringify(local));
-  } catch {
-    // Ignore storage quota
-  }
-
-  // 2. Direct Supabase persist if authenticated (e.g. staff or admin session)
+async function upsertVisitor(fields: VisitorUpsert): Promise<void> {
   try {
     const supabase = createClient();
-    const { data } = await supabase.auth.getSession();
-    if (!data?.session) {
-      // Anonymous visitor: live sync is handled 100% cleanly over Supabase Realtime WebSocket.
-      // Do not attempt an unauthorized HTTP PostgREST upsert to prevent red console errors.
-      return;
-    }
-
-    const { data: settingsData } = await supabase
-      .from("system_settings")
-      .select("value")
-      .eq("key", "analytics_telemetry")
-      .single();
-
-    const current = (settingsData?.value as {
-      visitors?: Record<string, unknown>;
-      events?: unknown[];
-    }) || { visitors: {}, events: [] };
-
-    const visitors = current.visitors || {};
-    const existing =
-      (visitors[visitor.visitor_id] as Partial<AnalyticsVisitor> | undefined) ||
-      {};
-
-    visitors[visitor.visitor_id] = {
-      ...existing,
-      ...visitor,
-      last_seen: new Date().toISOString(),
-      total_visits: (existing.total_visits || 0) + 1,
-    };
-
-    const events = Array.isArray(current.events) ? current.events : [];
-    if (event) {
-      events.unshift({
-        id: uid("e"),
-        visitor_id: visitor.visitor_id,
-        created_at: new Date().toISOString(),
-        ...event,
-      });
-      if (events.length > 200) events.length = 200;
-    }
-
-    await supabase.from("system_settings").upsert({
-      key: "analytics_telemetry",
-      value: { visitors, events },
-    });
+    const { error } = await supabase
+      .from("analytics_visitors")
+      .upsert(fields, { onConflict: "visitor_id" });
+    if (error) console.warn("[Analytics] Visitor upsert failed:", error.message);
   } catch {
     // Non-fatal
   }
 }
 
-/**
- * Record a pageview or visit event (100% clean, zero 404 errors)
- */
+/** Persist one clickstream event. RLS allows anonymous inserts. */
+async function insertEvent(event: EventInsert): Promise<void> {
+  try {
+    const supabase = createClient();
+    const { error } = await supabase.from("analytics_events").insert(event);
+    if (error) console.warn("[Analytics] Event insert failed:", error.message);
+  } catch {
+    // Non-fatal
+  }
+}
+
+/** Record a pageview: durable write to the analytics tables + a live ping. */
 export async function trackVisit(pagePath: string): Promise<void> {
   if (typeof window === "undefined") return;
 
@@ -375,7 +312,7 @@ export async function trackVisit(pagePath: string): Promise<void> {
   const device = detectDevice();
   const geo = await getGeoInfo();
 
-  const visitorPayload = {
+  const visitorPayload: VisitorUpsert = {
     visitor_id: visitorId,
     last_seen: new Date().toISOString(),
     last_ip: geo.ip,
@@ -390,7 +327,22 @@ export async function trackVisit(pagePath: string): Promise<void> {
     user_agent: device.userAgent,
   };
 
-  // 1. Broadcast realtime notice to active admin dashboard
+  await Promise.all([
+    upsertVisitor(visitorPayload),
+    insertEvent({
+      visitor_id: visitorId,
+      session_id: sessionId,
+      event_type: "pageview",
+      page_path: pagePath,
+      ip: geo.ip,
+      metadata: {
+        deviceModel: device.deviceModel,
+        city: geo.city,
+        country: geo.country,
+      },
+    }),
+  ]);
+
   void broadcastRealtimeEvent("analytics_event", {
     visitorId,
     pagePath,
@@ -400,21 +352,21 @@ export async function trackVisit(pagePath: string): Promise<void> {
     city: geo.city,
     country: geo.country,
   });
-
-  // 2. Persist directly to Supabase telemetry store
-  await recordToTelemetryStore(visitorPayload, {
-    event_type: "pageview",
-    page_path: pagePath,
-  });
 }
 
-/**
- * Track user tapping a menu item
- */
+/** Track a menu item tap. */
 export async function trackItemClick(itemName: string, category: string): Promise<void> {
   if (typeof window === "undefined") return;
 
   const visitorId = getVisitorId();
+
+  await insertEvent({
+    visitor_id: visitorId,
+    session_id: getSessionId(),
+    event_type: "item_view",
+    page_path: window.location.pathname,
+    metadata: { itemName, category },
+  });
 
   void broadcastRealtimeEvent("analytics_event", {
     type: "item_click",
@@ -422,20 +374,11 @@ export async function trackItemClick(itemName: string, category: string): Promis
     category,
     visitorId,
   });
-
-  await recordToTelemetryStore(
-    { visitor_id: visitorId },
-    {
-      event_type: "item_view",
-      page_path: window.location.pathname,
-      metadata: { itemName, category },
-    },
-  );
 }
 
 /**
- * Capture Customer Identity (Name, Phone, Email)
- * Links all anonymous history to the identified customer.
+ * Capture customer identity (name/phone/email) and link it to the visitor's
+ * anonymous history. Persists immediately — no admin needs to be online.
  */
 export async function captureCustomerLead(lead: {
   name?: string;
@@ -449,7 +392,7 @@ export async function captureCustomerLead(lead: {
   const device = detectDevice();
   const geo = await getGeoInfo();
 
-  const updateData = {
+  const updateData: VisitorUpsert = {
     visitor_id: visitorId,
     name: lead.name?.trim() || null,
     phone: lead.phone?.trim() || null,
@@ -466,7 +409,18 @@ export async function captureCustomerLead(lead: {
     screen_res: device.screenRes,
   };
 
-  // 1. Realtime notification to admin
+  await Promise.all([
+    upsertVisitor(updateData),
+    insertEvent({
+      visitor_id: visitorId,
+      session_id: getSessionId(),
+      event_type: "lead_captured",
+      page_path: window.location.pathname,
+      ip: geo.ip,
+      metadata: { source: lead.source ?? null },
+    }),
+  ]);
+
   void broadcastRealtimeEvent("lead_captured", {
     visitorId,
     name: lead.name,
@@ -475,13 +429,6 @@ export async function captureCustomerLead(lead: {
     deviceModel: device.deviceModel,
     location: [geo.city, geo.country].filter(Boolean).join(", ") || "Unknown Location",
     visitor: updateData,
-  });
-
-  // 2. Persist to Supabase telemetry store
-  await recordToTelemetryStore(updateData, {
-    event_type: "lead_captured",
-    page_path: window.location.pathname,
-    metadata: lead,
   });
 
   return true;

@@ -3,6 +3,7 @@ import { Barlow, Playfair_Display } from "next/font/google";
 
 import { Toaster } from "@/components/ui/sonner";
 import { AnalyticsProvider } from "@/components/analytics/analytics-provider";
+import { ThemeLoader } from "@/components/theme-loader";
 
 import "./globals.css";
 
@@ -45,6 +46,7 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body className="min-h-screen font-sans" suppressHydrationWarning>
+        <ThemeLoader />
         <AnalyticsProvider />
         {children}
         <Toaster position="top-center" richColors closeButton />

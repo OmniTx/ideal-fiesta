@@ -28,83 +28,25 @@ export default function AdminAnalyticsPage() {
 
   const supabase = React.useMemo(() => createClient(), []);
 
-  // Persist telemetry to Supabase using the authenticated admin session
-  const persistTelemetry = React.useCallback(
-    async (
-      visitorList: AnalyticsVisitor[],
-      pagePath?: string,
-      activeVisitor?: AnalyticsVisitor,
-    ) => {
-      try {
-        const visitorsMap: Record<string, AnalyticsVisitor> = {};
-        visitorList.forEach((v) => {
-          visitorsMap[v.visitor_id] = v;
-        });
-
-        const { data } = await supabase
-          .from("system_settings")
-          .select("value")
-          .eq("key", "analytics_telemetry")
-          .single();
-
-        const current = (data?.value as {
-          visitors?: Record<string, AnalyticsVisitor>;
-          events?: AnalyticsEvent[];
-        }) || { visitors: {}, events: [] };
-
-        const mergedVisitors = { ...(current.visitors || {}), ...visitorsMap };
-        const mergedEvents = Array.isArray(current.events) ? [...current.events] : [];
-
-        if (pagePath && activeVisitor) {
-          mergedEvents.unshift({
-            id: `e_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 7)}`,
-            visitor_id: activeVisitor.visitor_id,
-            session_id: "s_admin_sync",
-            ip: activeVisitor.last_ip,
-            event_type: "pageview",
-            page_path: pagePath,
-            created_at: new Date().toISOString(),
-            metadata: {
-              deviceModel: activeVisitor.device_model,
-              ip: activeVisitor.last_ip,
-              city: activeVisitor.city,
-              country: activeVisitor.country,
-            },
-          });
-          if (mergedEvents.length > 200) mergedEvents.length = 200;
-        }
-
-        await supabase.from("system_settings").upsert({
-          key: "analytics_telemetry",
-          value: { visitors: mergedVisitors, events: mergedEvents },
-        });
-      } catch (err) {
-        console.warn("Failed to persist live telemetry to Supabase:", err);
-      }
-    },
-    [supabase],
-  );
-
-  // Fetch telemetry cleanly from Supabase system_settings
+  // Fetch telemetry from the dedicated analytics tables. Anonymous visitors
+  // write directly via RLS, so data lands even when no admin is online.
   const loadData = React.useCallback(async () => {
     try {
-      const { data } = await supabase
-        .from("system_settings")
-        .select("value")
-        .eq("key", "analytics_telemetry")
-        .single();
+      const [visitorsRes, eventsRes] = await Promise.all([
+        supabase
+          .from("analytics_visitors")
+          .select("*")
+          .order("last_seen", { ascending: false })
+          .limit(500),
+        supabase
+          .from("analytics_events")
+          .select("*")
+          .order("created_at", { ascending: false })
+          .limit(300),
+      ]);
 
-      if (data?.value) {
-        const telemetry = data.value as {
-          visitors?: Record<string, AnalyticsVisitor>;
-          events?: AnalyticsEvent[];
-        };
-        const list = Object.values(telemetry.visitors || {}).sort(
-          (a, b) => new Date(b.last_seen).getTime() - new Date(a.last_seen).getTime(),
-        );
-        setVisitors(list);
-        setEvents(telemetry.events || []);
-      }
+      setVisitors((visitorsRes.data ?? []) as AnalyticsVisitor[]);
+      setEvents((eventsRes.data ?? []) as AnalyticsEvent[]);
     } catch {
       // Non-fatal
     } finally {
@@ -131,17 +73,19 @@ export default function AdminAnalyticsPage() {
             nextList[existsIndex] = {
               ...nextList[existsIndex],
               ...incoming,
-              total_visits: (nextList[existsIndex].total_visits || 1) + 1,
               last_seen: incoming.last_seen || new Date().toISOString(),
             };
           } else {
-            nextList = [incoming, ...prev];
+            nextList = [
+              {
+                first_seen: new Date().toISOString(),
+                total_visits: 1,
+                ...incoming,
+              } as AnalyticsVisitor,
+              ...prev,
+            ];
           }
           nextList.sort((a, b) => new Date(b.last_seen).getTime() - new Date(a.last_seen).getTime());
-
-          // Persist snapshot to Supabase using admin session
-          void persistTelemetry(nextList, payload.pagePath as string | undefined, incoming);
-
           return nextList;
         });
 
@@ -175,7 +119,7 @@ export default function AdminAnalyticsPage() {
     });
 
     return () => unsubscribe();
-  }, [loadData, persistTelemetry]);
+  }, [loadData]);
 
   // Derived metrics
   const now = Date.now();
@@ -183,6 +127,14 @@ export default function AdminAnalyticsPage() {
   const activeNow = visitors.filter(
     (v) => new Date(v.last_seen).getTime() > fifteenMinAgo,
   ).length;
+
+  // Visits per visitor, counted from pageview events (durable rows).
+  const visitsByVisitor: Record<string, number> = {};
+  events.forEach((ev) => {
+    if (ev.event_type === "pageview") {
+      visitsByVisitor[ev.visitor_id] = (visitsByVisitor[ev.visitor_id] ?? 0) + 1;
+    }
+  });
 
   const identifiedLeads = visitors.filter(
     (v) => Boolean(v.name || v.phone || v.email),
@@ -264,7 +216,7 @@ export default function AdminAnalyticsPage() {
       `"${(l.email || "").replace(/"/g, '""')}"`,
       `"${l.first_seen}"`,
       `"${l.last_seen}"`,
-      l.total_visits || 1,
+      visitsByVisitor[l.visitor_id] ?? l.total_visits ?? 1,
       `"${(l.device_model || "").replace(/"/g, '""')}"`,
       `"${l.device_type}"`,
       `"${l.last_ip || ""}"`,
@@ -546,7 +498,7 @@ export default function AdminAnalyticsPage() {
 
                       {/* Total Visits */}
                       <td className="px-4 py-3.5 text-right font-semibold">
-                        {lead.total_visits || 1}
+                        {visitsByVisitor[lead.visitor_id] ?? lead.total_visits ?? 1}
                       </td>
                     </tr>
                   ))}

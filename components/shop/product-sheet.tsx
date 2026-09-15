@@ -208,29 +208,29 @@ export function ProductSheet({ item, onClose }: ProductSheetProps) {
 
   return (
     <div
-      className="fixed inset-0 z-50 overflow-y-auto bg-[#f3f0e1] animate-in fade-in slide-in-from-bottom-6 duration-200"
+      className="fixed inset-0 z-50 overflow-y-auto bg-background animate-slide-up"
       role="dialog"
       aria-modal="true"
     >
       {/* Top sticky bar */}
-      <div className="sticky top-0 z-10 flex h-14 items-center justify-between border-b border-[#dbd5c0] bg-[#f3f0e1]/95 px-4 backdrop-blur-sm sm:px-6">
+      <div className="sticky top-0 z-10 flex h-14 items-center justify-between border-b border-border bg-background/95 px-4 backdrop-blur-sm sm:px-6">
         <button
           type="button"
           onClick={handleClose}
-          className="flex items-center gap-2 rounded-full py-1.5 pr-4 pl-2 text-xs font-semibold tracking-wider text-[#1b1915] uppercase transition hover:bg-[#eae5d2]"
+          className="flex items-center gap-2 rounded-full py-1.5 pr-4 pl-2 text-xs font-semibold tracking-wider text-foreground uppercase transition hover:bg-muted"
         >
           <ArrowLeft className="h-4 w-4" />
           <span>Back to menu</span>
         </button>
 
-        <span className="max-w-[200px] truncate text-xs font-medium tracking-wider text-[#6e6a5a] uppercase sm:max-w-xs">
+        <span className="max-w-[200px] truncate text-xs font-medium tracking-wider text-muted-foreground uppercase sm:max-w-xs">
           {item.category.replace("_", " ")} › {item.name}
         </span>
 
         <button
           type="button"
           onClick={handleClose}
-          className="grid h-9 w-9 place-items-center rounded-full text-[#1b1915] transition hover:bg-[#eae5d2]"
+          className="grid h-9 w-9 place-items-center rounded-full text-foreground transition hover:bg-muted"
           aria-label="Close sheet"
         >
           <X className="h-5 w-5" />
@@ -242,7 +242,7 @@ export function ProductSheet({ item, onClose }: ProductSheetProps) {
         {/* Left Column: Artwork & Cup Drawing */}
         <div className="md:sticky md:top-24">
           <div
-            className="art-cup grid min-h-[220px] place-items-center rounded-2xl border border-[#dbd5c0] bg-[#eae5d2]/60 p-8 sm:min-h-[280px] md:min-h-[380px]"
+            className="art-cup grid min-h-[220px] place-items-center rounded-2xl border border-border bg-muted/60 p-8 sm:min-h-[280px] md:min-h-[380px]"
             data-sz={
               selectedSize === "S" ? "0" : selectedSize === "M" ? "1" : "2"
             }
@@ -255,11 +255,11 @@ export function ProductSheet({ item, onClose }: ProductSheetProps) {
                 className="max-h-[260px] w-auto rounded-xl object-contain shadow-sm"
               />
             ) : (
-              <CupArt type={cupType} className="text-[#1b1915]" />
+              <CupArt type={cupType} className="text-foreground" />
             )}
           </div>
 
-          <p className="mt-3 text-center text-xs text-[#6e6a5a]">
+          <p className="mt-3 text-center text-xs text-muted-foreground">
             {item.image_url
               ? "Artisan kitchen photo"
               : "Hand-crafted line drawing · Made to order at the bench"}
@@ -270,18 +270,18 @@ export function ProductSheet({ item, onClose }: ProductSheetProps) {
         <div className="mt-6 md:mt-0">
           <div>
             <div className="flex items-center justify-between gap-4">
-              <h1 className="font-display text-3xl font-bold tracking-tight text-[#1b1915] sm:text-4xl">
+              <h1 className="font-display text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
                 {item.name}
               </h1>
               {!item.is_available && (
-                <span className="rounded-full bg-red-100 px-3 py-1 text-xs font-semibold text-red-800">
+                <span className="rounded-full bg-destructive/10 px-3 py-1 text-xs font-semibold text-destructive">
                   Sold Out Today
                 </span>
               )}
             </div>
 
             {item.description && (
-              <p className="mt-3 text-base leading-relaxed text-[#6e6a5a]">
+              <p className="mt-3 text-base leading-relaxed text-muted-foreground">
                 {item.description}
               </p>
             )}
@@ -289,8 +289,8 @@ export function ProductSheet({ item, onClose }: ProductSheetProps) {
 
           {/* Size Selector (Starbucks style cup row) */}
           {sizesAvailable.length > 0 && (
-            <div className="mt-8 border-t border-[#dbd5c0] pt-6">
-              <h2 className="text-xs font-semibold tracking-wider text-[#6e6a5a] uppercase">
+            <div className="mt-8 border-t border-border pt-6">
+              <h2 className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
                 Select Size
               </h2>
               <div className="mt-3 flex flex-wrap gap-2 sm:gap-3">
@@ -305,22 +305,22 @@ export function ProductSheet({ item, onClose }: ProductSheetProps) {
                       onClick={() => setSelectedSize(s.label)}
                       className={`flex flex-1 min-w-[84px] flex-col items-center justify-end rounded-xl border p-3 transition ${
                         isSelected
-                          ? "border-[#1b1915] bg-[#eae5d2] text-[#1b1915] shadow-xs"
-                          : "border-[#dbd5c0] bg-white/60 text-[#6e6a5a] hover:bg-[#eae5d2]/50"
+                          ? "border-foreground bg-muted text-foreground shadow-sm"
+                          : "border-border bg-card/60 text-muted-foreground hover:bg-muted/50"
                       }`}
                     >
                       <CupArt
                         type={cupType}
                         height={iconHeight}
-                        className={isSelected ? "text-[#1b1915]" : "text-[#6e6a5a] opacity-70"}
+                        className={isSelected ? "text-foreground" : "text-muted-foreground opacity-70"}
                       />
-                      <span className="mt-2 text-sm font-bold text-[#1b1915]">
+                      <span className="mt-2 text-sm font-bold text-foreground">
                         {s.label}
                       </span>
-                      <span className="text-[11px] text-[#6e6a5a]">
+                      <span className="text-[11px] text-muted-foreground">
                         {VOLUMES[s.label]}
                       </span>
-                      <span className="mt-1 text-xs font-semibold text-[#1b1915]">
+                      <span className="mt-1 text-xs font-semibold text-foreground">
                         ${s.price.toFixed(2)}
                       </span>
                     </button>
@@ -334,8 +334,8 @@ export function ProductSheet({ item, onClose }: ProductSheetProps) {
           {isDrink && (
             <>
               {/* Milk Option */}
-              <div className="mt-6 border-t border-[#dbd5c0] pt-6">
-                <h2 className="text-xs font-semibold tracking-wider text-[#6e6a5a] uppercase">
+              <div className="mt-6 border-t border-border pt-6">
+                <h2 className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
                   Milk Selection
                 </h2>
                 <div className="mt-3 flex flex-wrap gap-2">
@@ -348,8 +348,8 @@ export function ProductSheet({ item, onClose }: ProductSheetProps) {
                         onClick={() => setSelectedMilk(milk.label)}
                         className={`rounded-full border px-4 py-2 text-xs font-medium transition ${
                           isSelected
-                            ? "border-[#1b1915] bg-[#1b1915] text-[#f3f0e1]"
-                            : "border-[#dbd5c0] bg-white/70 text-[#1b1915] hover:bg-[#eae5d2]"
+                            ? "border-foreground bg-foreground text-background"
+                            : "border-border bg-card/70 text-foreground hover:bg-muted"
                         }`}
                       >
                         {milk.label}
@@ -361,8 +361,8 @@ export function ProductSheet({ item, onClose }: ProductSheetProps) {
               </div>
 
               {/* Syrup Flavours */}
-              <div className="mt-6 border-t border-[#dbd5c0] pt-6">
-                <h2 className="text-xs font-semibold tracking-wider text-[#6e6a5a] uppercase">
+              <div className="mt-6 border-t border-border pt-6">
+                <h2 className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
                   Flavour & Syrups
                 </h2>
                 <div className="mt-3 flex flex-wrap gap-2">
@@ -375,8 +375,8 @@ export function ProductSheet({ item, onClose }: ProductSheetProps) {
                         onClick={() => setSelectedSyrup(syrup.label)}
                         className={`rounded-full border px-4 py-2 text-xs font-medium transition ${
                           isSelected
-                            ? "border-[#1b1915] bg-[#1b1915] text-[#f3f0e1]"
-                            : "border-[#dbd5c0] bg-white/70 text-[#1b1915] hover:bg-[#eae5d2]"
+                            ? "border-foreground bg-foreground text-background"
+                            : "border-border bg-card/70 text-foreground hover:bg-muted"
                         }`}
                       >
                         {syrup.label}
@@ -388,8 +388,8 @@ export function ProductSheet({ item, onClose }: ProductSheetProps) {
               </div>
 
               {/* Shot / Caffeine */}
-              <div className="mt-6 border-t border-[#dbd5c0] pt-6">
-                <h2 className="text-xs font-semibold tracking-wider text-[#6e6a5a] uppercase">
+              <div className="mt-6 border-t border-border pt-6">
+                <h2 className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
                   Espresso Shot
                 </h2>
                 <div className="mt-3 flex flex-wrap gap-2">
@@ -402,8 +402,8 @@ export function ProductSheet({ item, onClose }: ProductSheetProps) {
                         onClick={() => setSelectedShot(shot.label)}
                         className={`rounded-full border px-4 py-2 text-xs font-medium transition ${
                           isSelected
-                            ? "border-[#1b1915] bg-[#1b1915] text-[#f3f0e1]"
-                            : "border-[#dbd5c0] bg-white/70 text-[#1b1915] hover:bg-[#eae5d2]"
+                            ? "border-foreground bg-foreground text-background"
+                            : "border-border bg-card/70 text-foreground hover:bg-muted"
                         }`}
                       >
                         {shot.label}
@@ -420,8 +420,8 @@ export function ProductSheet({ item, onClose }: ProductSheetProps) {
           {isFood && (
             <>
               {/* Bread Selection */}
-              <div className="mt-6 border-t border-[#dbd5c0] pt-6">
-                <h2 className="text-xs font-semibold tracking-wider text-[#6e6a5a] uppercase">
+              <div className="mt-6 border-t border-border pt-6">
+                <h2 className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
                   Bread Choice (100% Gluten Free)
                 </h2>
                 <div className="mt-3 flex flex-wrap gap-2">
@@ -434,8 +434,8 @@ export function ProductSheet({ item, onClose }: ProductSheetProps) {
                         onClick={() => setSelectedBread(bread.label)}
                         className={`rounded-full border px-4 py-2 text-xs font-medium transition ${
                           isSelected
-                            ? "border-[#1b1915] bg-[#1b1915] text-[#f3f0e1]"
-                            : "border-[#dbd5c0] bg-white/70 text-[#1b1915] hover:bg-[#eae5d2]"
+                            ? "border-foreground bg-foreground text-background"
+                            : "border-border bg-card/70 text-foreground hover:bg-muted"
                         }`}
                       >
                         {bread.label}
@@ -447,8 +447,8 @@ export function ProductSheet({ item, onClose }: ProductSheetProps) {
               </div>
 
               {/* Sides / Extras */}
-              <div className="mt-6 border-t border-[#dbd5c0] pt-6">
-                <h2 className="text-xs font-semibold tracking-wider text-[#6e6a5a] uppercase">
+              <div className="mt-6 border-t border-border pt-6">
+                <h2 className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
                   Add Fresh Sides
                 </h2>
                 <div className="mt-3 flex flex-wrap gap-2">
@@ -461,8 +461,8 @@ export function ProductSheet({ item, onClose }: ProductSheetProps) {
                         onClick={() => toggleSide(side.label)}
                         className={`rounded-full border px-3.5 py-1.5 text-xs font-medium transition ${
                           isSelected
-                            ? "border-[#1b1915] bg-[#1b1915] text-[#f3f0e1]"
-                            : "border-[#dbd5c0] bg-white/70 text-[#1b1915] hover:bg-[#eae5d2]"
+                            ? "border-foreground bg-foreground text-background"
+                            : "border-border bg-card/70 text-foreground hover:bg-muted"
                         }`}
                       >
                         {side.label}
@@ -478,7 +478,7 @@ export function ProductSheet({ item, onClose }: ProductSheetProps) {
           )}
 
           {/* Allergen & Dietary note */}
-          <p className="mt-8 text-xs leading-relaxed text-[#6e6a5a]">
+          <p className="mt-8 text-xs leading-relaxed text-muted-foreground">
             Every item is made to order in our dedicated 100% gluten-free
             kitchen. Full dietary and allergen details are available at the
             counter. We do not take online payments yet.
@@ -488,25 +488,25 @@ export function ProductSheet({ item, onClose }: ProductSheetProps) {
 
       {/* Floating Fixed Bottom Total Card (Matching Sample) */}
       <div className="pointer-events-none fixed inset-x-0 bottom-0 z-30 p-3 sm:p-5">
-        <div className="pointer-events-auto mx-auto flex max-w-xl items-center justify-between gap-4 rounded-2xl border border-[#dbd5c0] bg-[#f3f0e1]/95 px-5 py-3.5 shadow-2xl backdrop-blur-md transition-all duration-200 hover:border-[#1b1915]/40">
+        <div className="pointer-events-auto mx-auto flex max-w-xl items-center justify-between gap-4 rounded-2xl border border-border bg-background/95 px-5 py-3.5 shadow-2xl backdrop-blur-md transition-all duration-200 hover:border-foreground/40">
           <div className="min-w-0 flex-1">
-            <span className="block truncate text-[11px] font-semibold tracking-wider text-[#6e6a5a] uppercase">
+            <span className="block truncate text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
               Your {selectedSize ? `${selectedSize} ` : ""}{item.name}
             </span>
             <div className="flex items-baseline gap-1.5">
-              <span className="font-display text-2xl font-bold tabular-nums text-[#1b1915] sm:text-3xl">
+              <span className="font-display text-2xl font-bold tabular-nums text-foreground sm:text-3xl">
                 ${finalTotal.toFixed(2)}
               </span>
-              <span className="text-xs font-medium text-[#6e6a5a]">AUD</span>
+              <span className="text-xs font-medium text-muted-foreground">AUD</span>
             </div>
           </div>
 
           <div className="shrink-0 text-right">
-            <div className="inline-flex items-center gap-1.5 rounded-full bg-[#1b1915] px-3.5 py-1.5 text-xs font-semibold text-[#f3f0e1] shadow-sm">
-              <span className="h-1.5 w-1.5 rounded-full bg-[#82996d] animate-pulse" />
+            <div className="inline-flex items-center gap-1.5 rounded-full bg-foreground px-3.5 py-1.5 text-xs font-semibold text-background shadow-sm">
+              <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
               <span>Order at Counter</span>
             </div>
-            <p className="mt-1 text-[10px] text-[#6e6a5a]">Level 3 Bench</p>
+            <p className="mt-1 text-[10px] text-muted-foreground">Level 3 Bench</p>
           </div>
         </div>
       </div>

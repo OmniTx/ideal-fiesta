@@ -29,8 +29,8 @@ jobs:
 
       - name: Build (typecheck + production build)
         # The admin pages construct the Supabase browser client while
-        # prerendering, so the public env vars must be present at build time.
-        # Default fallbacks are also baked into utils/supabase/client.ts.
+        # prerendering, and the client throws if these are missing — the
+        # build needs the publishable env vars. Add them as repo secrets.
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
