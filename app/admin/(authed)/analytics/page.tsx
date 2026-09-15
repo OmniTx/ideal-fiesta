@@ -78,9 +78,9 @@ export default function AdminAnalyticsPage() {
           } else {
             nextList = [
               {
-                first_seen: new Date().toISOString(),
-                total_visits: 1,
                 ...incoming,
+                first_seen: incoming.first_seen ?? new Date().toISOString(),
+                total_visits: incoming.total_visits ?? 1,
               } as AnalyticsVisitor,
               ...prev,
             ];

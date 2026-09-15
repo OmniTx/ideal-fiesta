@@ -24,3 +24,6 @@ next-env.d.ts
 *.pem
 *.tsbuildinfo
 supabase/.temp/
+
+# local export archives
+/*.zip
