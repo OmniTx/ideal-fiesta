@@ -42,17 +42,12 @@
 }
 
 /* Height of the shop's unified sticky header (announcement ribbon + topbar).
-   The ribbon copy is held to a single line at every breakpoint, so this stays
-   exact — it is the single source of truth for the menu category bar offset
-   and the homepage anchor scroll margins. */
+   The ribbon wraps to a variable number of lines, so ShopHeader measures the
+   rendered height and overwrites this at runtime — this is only the
+   first-paint fallback. The menu category bar offset and the homepage anchor
+   scroll margins both read the variable. */
 :root {
-  --shop-header-h: 84px;
-}
-
-@media (min-width: 640px) {
-  :root {
-    --shop-header-h: 100px;
-  }
+  --shop-header-h: 100px;
 }
 
 @layer utilities {

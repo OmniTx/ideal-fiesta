@@ -22,6 +22,7 @@ export function ShopHeader() {
   const { todayHours } = useStoreSettings();
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const pathname = usePathname();
+  const headerRef = React.useRef<HTMLElement | null>(null);
 
   // Close drawer on route change
   React.useEffect(() => {
@@ -40,15 +41,42 @@ export function ShopHeader() {
     };
   }, [drawerOpen]);
 
+  // Publish the real height of the sticky header. The announcement ribbon
+  // wraps to a variable number of lines, so anything that has to sit below it
+  // (the menu category bar, the homepage anchor margins) reads this instead of
+  // hard-coding a height that only holds at one viewport width.
+  React.useEffect(() => {
+    const el = headerRef.current;
+    if (!el) return;
+
+    const apply = () => {
+      document.documentElement.style.setProperty(
+        "--shop-header-h",
+        `${Math.round(el.getBoundingClientRect().height)}px`,
+      );
+    };
+
+    apply();
+    const observer = new ResizeObserver(apply);
+    observer.observe(el);
+
+    return () => {
+      observer.disconnect();
+      document.documentElement.style.removeProperty("--shop-header-h");
+    };
+  }, []);
+
   return (
     <>
       {/* Unified Sticky Header containing Announcement Ribbon and Navigation */}
-      <header className="sticky top-0 z-40 w-full border-b border-border bg-background/95 backdrop-blur-sm">
-        {/* Top Announcement Ribbon. Held to a single line at every breakpoint
-            so the sticky header keeps a predictable height (--shop-header-h). */}
-        <div className="overflow-hidden whitespace-nowrap bg-primary px-4 py-1.5 text-center text-xs font-semibold tracking-wider text-primary-foreground sm:py-2 sm:text-sm">
+      <header
+        ref={headerRef}
+        className="sticky top-0 z-40 w-full border-b border-border bg-background/95 backdrop-blur-sm"
+      >
+        {/* Top Announcement Ribbon */}
+        <div className="bg-primary px-4 py-1.5 text-center text-xs font-semibold tracking-wider text-primary-foreground sm:py-2 sm:text-sm">
           <span>100% gluten free kitchen.</span>{" "}
-          <span className="hidden font-normal opacity-90 lg:inline">
+          <span className="font-normal opacity-90">
             Nothing on the premises contains wheat. No cross-contamination.
           </span>
         </div>
