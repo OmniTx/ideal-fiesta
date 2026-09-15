@@ -15,6 +15,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
+      - name: Derive build label
+        # Short commit SHA prefixes the artifact, matching the local export
+        # convention: <sha>-foundry-artisan-coffee-static.zip
+        run: echo "SHORT_SHA=${GITHUB_SHA::7}" >> "$GITHUB_ENV"
+
       - name: Set up Node.js
         uses: actions/setup-node@v7
         with:
@@ -22,7 +27,10 @@ jobs:
           cache: "npm"
 
       - name: Install dependencies
-        run: npm ci
+        # Explicit --include=dev: with NODE_ENV=production npm ci silently skips
+        # devDependencies, so tailwindcss/typescript go missing and the build
+        # dies with "Cannot find module 'tailwindcss'".
+        run: npm ci --include=dev
 
       - name: Lint
         run: npm run lint
@@ -39,6 +47,6 @@ jobs:
       - name: Upload static export artifact
         uses: actions/upload-artifact@v7
         with:
-          name: foundry-artisan-coffee-static-files
+          name: ${{ env.SHORT_SHA }}-foundry-artisan-coffee-static
           path: out
           retention-days: 14
