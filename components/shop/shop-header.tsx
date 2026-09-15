@@ -42,28 +42,29 @@ export function ShopHeader() {
 
   return (
     <>
-      {/* Top Announcement Ribbon */}
-      <div className="bg-primary px-4 py-2 text-center text-xs font-semibold tracking-wider text-primary-foreground sm:text-sm">
-        <span>100% gluten free kitchen.</span>{" "}
-        <span className="font-normal opacity-90">
-          Nothing on the premises contains wheat. No cross-contamination.
-        </span>
-      </div>
+      {/* Unified Sticky Header containing Announcement Ribbon and Navigation */}
+      <header className="sticky top-0 z-40 w-full border-b border-border bg-background/95 backdrop-blur-sm">
+        {/* Top Announcement Ribbon */}
+        <div className="bg-primary px-4 py-1.5 text-center text-xs font-semibold tracking-wider text-primary-foreground sm:py-2 sm:text-sm">
+          <span>100% gluten free kitchen.</span>{" "}
+          <span className="font-normal opacity-90">
+            Nothing on the premises contains wheat. No cross-contamination.
+          </span>
+        </div>
 
-      {/* Main Sticky Topbar */}
-      <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur-sm">
-        <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-4 sm:px-6">
+        {/* Main Topbar */}
+        <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4 sm:h-16 sm:px-6">
           {/* Brand Logo */}
           <Link
             href="/"
-            className="flex items-center gap-3 transition-opacity hover:opacity-85"
+            className="flex shrink-0 items-center gap-3 transition-opacity hover:opacity-85"
             aria-label="Foundry Artisan Coffee Home"
           >
             <Image
               src="/brand/logo.png"
               alt="Foundry Artisan Coffee"
-              width={160}
-              height={32}
+              width={140}
+              height={70}
               priority
               className="h-7 w-auto object-contain sm:h-8"
             />
@@ -107,7 +108,7 @@ export function ShopHeader() {
           </nav>
 
           {/* Right Action Buttons */}
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
             <Link
               href="/menu"
               className="hidden rounded-full bg-foreground px-4 py-2 text-xs font-semibold tracking-wider text-background uppercase transition hover:bg-foreground/85 sm:inline-flex"
