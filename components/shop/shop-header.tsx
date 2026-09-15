@@ -44,10 +44,11 @@ export function ShopHeader() {
     <>
       {/* Unified Sticky Header containing Announcement Ribbon and Navigation */}
       <header className="sticky top-0 z-40 w-full border-b border-border bg-background/95 backdrop-blur-sm">
-        {/* Top Announcement Ribbon */}
-        <div className="bg-primary px-4 py-1.5 text-center text-xs font-semibold tracking-wider text-primary-foreground sm:py-2 sm:text-sm">
+        {/* Top Announcement Ribbon. Held to a single line at every breakpoint
+            so the sticky header keeps a predictable height (--shop-header-h). */}
+        <div className="overflow-hidden whitespace-nowrap bg-primary px-4 py-1.5 text-center text-xs font-semibold tracking-wider text-primary-foreground sm:py-2 sm:text-sm">
           <span>100% gluten free kitchen.</span>{" "}
-          <span className="font-normal opacity-90">
+          <span className="hidden font-normal opacity-90 lg:inline">
             Nothing on the premises contains wheat. No cross-contamination.
           </span>
         </div>

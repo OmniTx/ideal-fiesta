@@ -290,7 +290,7 @@ export default function ShopHomePage() {
       </section>
 
       {/* 5. STORY SECTION: Built Around the Bench */}
-      <section id="story" className="border-b border-border bg-background px-4 py-16 sm:px-6 sm:py-24">
+      <section id="story" className="scroll-mt-[var(--shop-header-h)] border-b border-border bg-background px-4 py-16 sm:px-6 sm:py-24">
         <div className="mx-auto max-w-5xl">
           <div className="grid gap-12 lg:grid-cols-2 lg:items-center">
             <div>
@@ -399,7 +399,7 @@ export default function ShopHomePage() {
       </section>
 
       {/* 7. VISIT / OPENING HOURS & LOCATION */}
-      <section id="visit" className="bg-background px-4 py-16 sm:px-6 sm:py-24">
+      <section id="visit" className="scroll-mt-[var(--shop-header-h)] bg-background px-4 py-16 sm:px-6 sm:py-24">
         <div className="mx-auto max-w-5xl">
           <div className="flex items-center gap-2 text-xs font-semibold tracking-wider text-primary uppercase">
             <Clock className="h-4 w-4" />

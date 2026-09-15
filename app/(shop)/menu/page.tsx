@@ -210,7 +210,7 @@ export default function ShopMenuPage() {
         </div>
 
         {/* Sticky Horizontal Category Pill Selector (Starbucks style) */}
-        <div className="sticky top-[88px] z-30 -mx-4 overflow-x-auto bg-background/95 px-4 py-3 backdrop-blur-sm sm:top-24 sm:-mx-6 sm:px-6">
+        <div className="sticky top-[var(--shop-header-h)] z-30 -mx-4 overflow-x-auto bg-background/95 px-4 py-3 backdrop-blur-sm sm:-mx-6 sm:px-6">
           <div className="flex gap-2">
             <button
               type="button"
