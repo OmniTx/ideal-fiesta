@@ -327,21 +327,22 @@ export async function trackVisit(pagePath: string): Promise<void> {
     user_agent: device.userAgent,
   };
 
-  await Promise.all([
-    upsertVisitor(visitorPayload),
-    insertEvent({
-      visitor_id: visitorId,
-      session_id: sessionId,
-      event_type: "pageview",
-      page_path: pagePath,
-      ip: geo.ip,
-      metadata: {
-        deviceModel: device.deviceModel,
-        city: geo.city,
-        country: geo.country,
-      },
-    }),
-  ]);
+  // analytics_events.visitor_id is a foreign key to analytics_visitors, so the
+  // upsert has to land first — run in parallel the insert can race ahead and
+  // be rejected with a foreign key violation.
+  await upsertVisitor(visitorPayload);
+  await insertEvent({
+    visitor_id: visitorId,
+    session_id: sessionId,
+    event_type: "pageview",
+    page_path: pagePath,
+    ip: geo.ip,
+    metadata: {
+      deviceModel: device.deviceModel,
+      city: geo.city,
+      country: geo.country,
+    },
+  });
 
   void broadcastRealtimeEvent("analytics_event", {
     visitorId,
@@ -409,17 +410,15 @@ export async function captureCustomerLead(lead: {
     screen_res: device.screenRes,
   };
 
-  await Promise.all([
-    upsertVisitor(updateData),
-    insertEvent({
-      visitor_id: visitorId,
-      session_id: getSessionId(),
-      event_type: "lead_captured",
-      page_path: window.location.pathname,
-      ip: geo.ip,
-      metadata: { source: lead.source ?? null },
-    }),
-  ]);
+  await upsertVisitor(updateData);
+  await insertEvent({
+    visitor_id: visitorId,
+    session_id: getSessionId(),
+    event_type: "lead_captured",
+    page_path: window.location.pathname,
+    ip: geo.ip,
+    metadata: { source: lead.source ?? null },
+  });
 
   void broadcastRealtimeEvent("lead_captured", {
     visitorId,

@@ -96,6 +96,16 @@ create policy "analytics_events admin all"
   using (true)
   with check (true);
 
--- Enable Realtime publication for live visitor alerts
-alter publication supabase_realtime add table public.analytics_visitors;
-alter publication supabase_realtime add table public.analytics_events;
+-- Enable Realtime publication for live visitor alerts. Guarded so the script
+-- can be re-run without "relation is already member of publication" errors.
+do $$
+begin
+  alter publication supabase_realtime add table public.analytics_visitors;
+exception when duplicate_object then null;
+end $$;
+
+do $$
+begin
+  alter publication supabase_realtime add table public.analytics_events;
+exception when duplicate_object then null;
+end $$;
