@@ -41,15 +41,6 @@
   }
 }
 
-/* Height of the shop's unified sticky header (announcement ribbon + topbar).
-   The ribbon wraps to a variable number of lines, so ShopHeader measures the
-   rendered height and overwrites this at runtime — this is only the
-   first-paint fallback. The menu category bar offset and the homepage anchor
-   scroll margins both read the variable. */
-:root {
-  --shop-header-h: 100px;
-}
-
 @layer utilities {
   /* Mobile-first admin: comfortable single-handed touch targets. */
   .touch-target {

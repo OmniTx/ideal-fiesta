@@ -22,7 +22,6 @@ export function ShopHeader() {
   const { todayHours } = useStoreSettings();
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const pathname = usePathname();
-  const headerRef = React.useRef<HTMLElement | null>(null);
 
   // Close drawer on route change
   React.useEffect(() => {
@@ -41,48 +40,20 @@ export function ShopHeader() {
     };
   }, [drawerOpen]);
 
-  // Publish the real height of the sticky header. The announcement ribbon
-  // wraps to a variable number of lines, so anything that has to sit below it
-  // (the menu category bar, the homepage anchor margins) reads this instead of
-  // hard-coding a height that only holds at one viewport width.
-  React.useEffect(() => {
-    const el = headerRef.current;
-    if (!el) return;
-
-    const apply = () => {
-      document.documentElement.style.setProperty(
-        "--shop-header-h",
-        `${Math.round(el.getBoundingClientRect().height)}px`,
-      );
-    };
-
-    apply();
-    const observer = new ResizeObserver(apply);
-    observer.observe(el);
-
-    return () => {
-      observer.disconnect();
-      document.documentElement.style.removeProperty("--shop-header-h");
-    };
-  }, []);
-
   return (
     <>
-      {/* Unified Sticky Header containing Announcement Ribbon and Navigation */}
-      <header
-        ref={headerRef}
-        className="sticky top-0 z-40 w-full border-b border-border bg-background/95 backdrop-blur-sm"
-      >
-        {/* Top Announcement Ribbon */}
-        <div className="bg-primary px-4 py-1.5 text-center text-xs font-semibold tracking-wider text-primary-foreground sm:py-2 sm:text-sm">
-          <span>100% gluten free kitchen.</span>{" "}
-          <span className="font-normal opacity-90">
-            Nothing on the premises contains wheat. No cross-contamination.
-          </span>
-        </div>
+      {/* Top Announcement Ribbon — normal flow, so it scrolls away with the
+          page instead of staying pinned above the topbar. */}
+      <div className="bg-primary px-4 py-2 text-center text-xs font-semibold tracking-wider text-primary-foreground sm:text-sm">
+        <span>100% gluten free kitchen.</span>{" "}
+        <span className="font-normal opacity-90">
+          Nothing on the premises contains wheat. No cross-contamination.
+        </span>
+      </div>
 
-        {/* Main Topbar */}
-        <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4 sm:h-16 sm:px-6">
+      {/* Main Sticky Topbar */}
+      <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur-sm">
+        <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-4 sm:px-6">
           {/* Brand Logo */}
           <Link
             href="/"
