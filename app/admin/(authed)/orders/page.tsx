@@ -5,12 +5,15 @@ import Link from "next/link";
 import { MonitorPlay, ReceiptText, RefreshCw } from "lucide-react";
 
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { DeleteOrderDialog } from "@/components/admin/delete-order-dialog";
+import { OrderEditDialog } from "@/components/admin/order-edit-dialog";
 import { OrdersTable } from "@/components/admin/orders-table";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useOrders } from "@/lib/hooks/use-orders";
 import { venueDateString } from "@/lib/time";
 import { cn } from "@/lib/utils";
+import type { Order } from "@/lib/types/database";
 
 type OrdersFilter = "today" | "open" | "all";
 
@@ -21,9 +24,19 @@ const FILTERS: { value: OrdersFilter; label: string }[] = [
 ];
 
 export default function AdminOrdersPage() {
-  const { orders, isLoading, error, pendingIds, reload, updateStatus } =
-    useOrders();
+  const {
+    orders,
+    isLoading,
+    error,
+    pendingIds,
+    reload,
+    updateStatus,
+    saveTicket,
+    removeOrder,
+  } = useOrders();
   const [filter, setFilter] = React.useState<OrdersFilter>("today");
+  const [editingOrder, setEditingOrder] = React.useState<Order | null>(null);
+  const [deletingOrder, setDeletingOrder] = React.useState<Order | null>(null);
 
   const today = venueDateString();
   const visible = orders.filter((order) => {
@@ -133,8 +146,26 @@ export default function AdminOrdersPage() {
           orders={visible}
           pendingIds={pendingIds}
           onStatusChange={(order, status) => void updateStatus(order, status)}
+          onEdit={setEditingOrder}
+          onDelete={setDeletingOrder}
         />
       ) : null}
+
+      <OrderEditDialog
+        order={editingOrder}
+        onOpenChange={(open) => {
+          if (!open) setEditingOrder(null);
+        }}
+        onSave={saveTicket}
+      />
+
+      <DeleteOrderDialog
+        order={deletingOrder}
+        onOpenChange={(open) => {
+          if (!open) setDeletingOrder(null);
+        }}
+        onConfirm={removeOrder}
+      />
     </div>
   );
 }

@@ -151,16 +151,67 @@ export async function fetchOrders(limit = 300): Promise<Order[]> {
   return (data ?? []) as Order[];
 }
 
-/** Admin: move a ticket along. Visitors hold no UPDATE policy on orders. */
-export async function setOrderStatus(
+export interface OrderEditInput {
+  customer_name?: string | null;
+  note?: string | null;
+  status?: OrderStatus;
+}
+
+/** Admin: correct a ticket — its name, its note, or its state. */
+export async function updateOrder(
   orderId: string,
-  status: OrderStatus,
+  fields: OrderEditInput,
 ): Promise<void> {
+  const payload: Record<string, unknown> = {};
+
+  if (fields.customer_name !== undefined) {
+    payload.customer_name = fields.customer_name?.trim() || null;
+  }
+  if (fields.note !== undefined) {
+    payload.note = fields.note?.trim() || null;
+  }
+  if (fields.status !== undefined) {
+    payload.status = fields.status;
+  }
+
+  if (Object.keys(payload).length === 0) return;
+
   const supabase = createClient();
   const { error } = await supabase
     .from("orders")
-    .update({ status })
+    .update(payload)
     .eq("id", orderId);
 
+  if (error) throw new Error(error.message);
+}
+
+/**
+ * Admin: remove a ticket outright. Its lines go with it via `on delete cascade`,
+ * and the cascade runs outside RLS, so no order_items delete is needed.
+ */
+export async function deleteOrder(orderId: string): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase.from("orders").delete().eq("id", orderId);
+  if (error) throw new Error(error.message);
+}
+
+/** Admin: change how many of a line the customer wants. */
+export async function updateOrderItemQuantity(
+  itemId: string,
+  quantity: number,
+): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("order_items")
+    .update({ quantity: Math.max(1, Math.min(20, Math.round(quantity))) })
+    .eq("id", itemId);
+
+  if (error) throw new Error(error.message);
+}
+
+/** Admin: drop a line from a ticket. The 0008 trigger recounts the totals. */
+export async function deleteOrderItem(itemId: string): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase.from("order_items").delete().eq("id", itemId);
   if (error) throw new Error(error.message);
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Check, Loader2, RotateCcw } from "lucide-react";
+import { Check, Loader2, Pencil, RotateCcw, Trash2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,8 @@ interface OrdersTableProps {
   orders: Order[];
   pendingIds: string[];
   onStatusChange: (order: Order, status: "served" | "void") => void;
+  onEdit: (order: Order) => void;
+  onDelete: (order: Order) => void;
 }
 
 function itemLine(item: OrderItem): string {
@@ -27,6 +29,8 @@ export function OrdersTable({
   orders,
   pendingIds,
   onStatusChange,
+  onEdit,
+  onDelete,
 }: OrdersTableProps) {
   return (
     <ul className="flex flex-col gap-3">
@@ -117,6 +121,31 @@ export function OrdersTable({
                     Reopen
                   </Button>
                 )}
+
+                <span className="mx-0.5 h-6 w-px bg-border" aria-hidden="true" />
+
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => onEdit(order)}
+                  disabled={isPending}
+                  aria-label={`Edit ticket ${formatOrderNumber(order.order_number)}`}
+                  title="Edit ticket"
+                  className="h-9 w-9 text-muted-foreground hover:text-foreground"
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => onDelete(order)}
+                  disabled={isPending}
+                  aria-label={`Delete ticket ${formatOrderNumber(order.order_number)}`}
+                  title="Delete ticket"
+                  className="h-9 w-9 text-destructive hover:bg-destructive/10"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
               </div>
             </div>
 
