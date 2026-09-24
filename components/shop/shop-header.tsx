@@ -16,6 +16,7 @@ import {
   Coffee,
   Gift,
   ShoppingBag,
+  Phone,
 } from "lucide-react";
 
 import { useCart } from "@/components/shop/cart-provider";
@@ -275,6 +276,14 @@ export function ShopHeader() {
               >
                 <span>Hours & Location</span>
                 <MapPin className="h-4 w-4 text-muted-foreground" />
+              </Link>
+              <Link
+                href="/contact"
+                onClick={() => setDrawerOpen(false)}
+                className="flex items-center justify-between py-4 text-base font-semibold tracking-wider uppercase text-foreground hover:text-primary"
+              >
+                <span>Contact & Find Us</span>
+                <Phone className="h-4 w-4 text-muted-foreground" />
               </Link>
               <Link
                 href="https://www.instagram.com/foundry_artisancoffee/"

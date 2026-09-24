@@ -6,6 +6,7 @@ import Image from "next/image";
 import { Instagram, MapPin, Clock, ShieldCheck, Heart } from "lucide-react";
 import { GLUTEN_FREE_FOOTER } from "@/lib/copy";
 import { useStoreSettings } from "@/lib/hooks/use-store-settings";
+import { LEGAL_LINKS } from "@/lib/site";
 
 export function ShopFooter() {
   const { openingHours } = useStoreSettings();
@@ -143,6 +144,22 @@ export function ShopFooter() {
             perk — never sold, never shared, and you can ask us to remove it at
             the counter.
           </p>
+
+          <nav
+            aria-label="Legal and information"
+            className="mb-6 flex flex-wrap items-center gap-x-5 gap-y-2"
+          >
+            {LEGAL_LINKS.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="font-medium text-background/75 transition-colors hover:text-background"
+              >
+                {link.label}
+              </Link>
+            ))}
+          </nav>
+
           <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
             <p suppressHydrationWarning>
               © {currentYear} Foundry Artisan Coffee. 100% Gluten Free.

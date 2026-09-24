@@ -1,6 +1,7 @@
 import * as React from "react";
 
 import { ActiveOrderBar } from "@/components/shop/active-order-bar";
+import { BasketBar } from "@/components/shop/basket-bar";
 import { CartProvider } from "@/components/shop/cart-provider";
 import { CartSheet } from "@/components/shop/cart-sheet";
 import { OrderProvider } from "@/components/shop/order-provider";
@@ -34,7 +35,15 @@ export default function ShopLayout({
             <main className="min-h-[calc(100vh-16rem)]">{children}</main>
             <ShopFooter />
             <VipPerkBanner />
-            <ActiveOrderBar />
+
+            {/* One slot at the bottom of the screen, shared. Every component in
+                here is a plain bar; the stacking is done once, here, so they
+                cannot overlap each other or the rewards nudge. */}
+            <div className="pointer-events-none fixed inset-x-0 bottom-0 z-30 flex flex-col gap-2 p-3 sm:p-4">
+              <ActiveOrderBar />
+              <BasketBar />
+            </div>
+
             <CartSheet />
             <RewardsDialog />
             <OrderTrackerDialog />

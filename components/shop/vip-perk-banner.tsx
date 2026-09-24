@@ -6,6 +6,7 @@ import { CheckCircle2, Gift, Sparkles, X } from "lucide-react";
 import { RewardsSignup } from "@/components/shop/rewards-signup";
 import { useRewardsSignup } from "@/components/shop/rewards-provider";
 import { useMyOrders } from "@/components/shop/order-provider";
+import { useCart } from "@/components/shop/cart-provider";
 import { DEFAULT_REWARDS_CONFIG, mergeRewardsConfig } from "@/lib/rewards";
 import { fetchSetting } from "@/lib/settings";
 import type { RewardsConfig } from "@/lib/types/database";
@@ -23,6 +24,7 @@ const PERK_DISMISSED_KEY = "foundry_rewards_dismissed";
 export function VipPerkBanner() {
   const { isMember, openSignup } = useRewardsSignup();
   const { activeOrder } = useMyOrders();
+  const { count } = useCart();
   const [isOpen, setIsOpen] = React.useState(false);
   const [isDismissed, setIsDismissed] = React.useState(true);
   const [submitted, setSubmitted] = React.useState(false);
@@ -72,9 +74,12 @@ export function VipPerkBanner() {
     setSubmitted(true);
   };
 
-  // A ticket in flight outranks a signup nudge, and both want the same corner
-  // of a phone screen — the active-order bar takes it.
-  if (isDismissed || isMember || !config.enabled || activeOrder) return null;
+  // Everything that wants the bottom of the screen queues up here: a ticket in
+  // flight outranks a signup nudge, and a filled basket outranks it too — the
+  // basket bar takes the slot so this never covers it.
+  if (isDismissed || isMember || !config.enabled || activeOrder || count > 0) {
+    return null;
+  }
 
   return (
     <>

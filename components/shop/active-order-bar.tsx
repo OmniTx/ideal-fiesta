@@ -20,12 +20,11 @@ export function ActiveOrderBar() {
   if (!activeOrder || isTrackerOpen) return null;
 
   return (
-    <div className="fixed bottom-4 left-4 right-4 z-30 mx-auto max-w-md animate-slide-up">
-      <button
-        type="button"
-        onClick={openTracker}
-        className="flex w-full items-center gap-3 rounded-2xl border border-border bg-foreground p-3.5 text-left text-background shadow-xl backdrop-blur-md transition hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-      >
+    <button
+      type="button"
+      onClick={openTracker}
+      className="pointer-events-auto mx-auto flex w-full max-w-md animate-slide-up items-center gap-3 rounded-2xl border border-border bg-foreground p-3.5 text-left text-background shadow-xl backdrop-blur-md transition hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+    >
         <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground">
           <ReceiptText className="h-4 w-4" />
         </span>
@@ -44,6 +43,5 @@ export function ActiveOrderBar() {
 
         <ChevronRight className="h-4 w-4 shrink-0 text-background/70" />
       </button>
-    </div>
   );
 }
