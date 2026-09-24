@@ -27,6 +27,14 @@ const ADMIN_EVENTS: readonly RealtimeEvent[] = [
   "lead_captured",
 ];
 
+/**
+ * When channel joins are not working there is no point opening a fresh channel
+ * and waiting five seconds for a timeout on every single pageview, so publishing
+ * backs off once it has failed. It retries later in case the connection recovers.
+ */
+const PUBLISH_BACKOFF_MS = 5 * 60 * 1000;
+let publishDisabledUntil = 0;
+
 function topicFor(event: RealtimeEvent): string {
   return ADMIN_EVENTS.includes(event) ? ADMIN_REALTIME_CHANNEL : REALTIME_CHANNEL;
 }
@@ -43,6 +51,7 @@ export async function broadcastRealtimeEvent(
   payload?: Record<string, unknown>,
 ): Promise<void> {
   if (typeof window === "undefined") return;
+  if (Date.now() < publishDisabledUntil) return;
 
   const supabase = createClient();
   const channel = supabase.channel(topicFor(event), {
@@ -70,8 +79,12 @@ export async function broadcastRealtimeEvent(
 
     if (status !== "SUBSCRIBED") {
       // Say it out loud. A rejected join means nothing was published, and
-      // silently returning makes realtime look merely quiet.
-      console.warn(`[Realtime] could not publish "${event}": ${status}`);
+      // silently returning makes realtime look merely quiet. Then stop trying
+      // for a while rather than repeating this on every event.
+      publishDisabledUntil = Date.now() + PUBLISH_BACKOFF_MS;
+      console.warn(
+        `[Realtime] "${event}" not published (${status}); pausing publishes for ${PUBLISH_BACKOFF_MS / 60000} minutes.`,
+      );
       return;
     }
 

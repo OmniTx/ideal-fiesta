@@ -24,14 +24,16 @@ const DOTS: Record<RealtimeStatus, string> = {
 function label(health: RealtimeHealth): { text: string; tone: RealtimeStatus } {
   if (health.private === "connected") return { text: "Live", tone: "connected" };
   if (health.private === "error") return { text: "Offline", tone: "error" };
-  return { text: "No join", tone: "connecting" };
+  // Not connected, but the pages still refresh on a timer — which is the thing
+  // staff actually care about, so the label says what is happening rather than
+  // naming a transport they have no reason to know about.
+  return { text: "Auto-refresh", tone: "connecting" };
 }
-
 function explain(health: RealtimeHealth): string {
   const { private: priv, public: pub, error } = health;
 
   if (priv === "connected") {
-    return "Live updates are connected.";
+    return "Live updates are connected — changes appear within about a second.";
   }
 
   const parts: string[] = [];
@@ -46,13 +48,15 @@ function explain(health: RealtimeHealth): string {
     parts.push("Both the private and public channel joins were refused.");
   } else {
     parts.push(
-      "Neither join returned a status at all, which is a hang rather than a refusal.",
+      "Neither join returned a status at all, which is a hang rather than a refusal — so this is not the channel configuration.",
     );
   }
 
   if (error) parts.push(`Server said: ${error}`);
 
-  parts.push("Pages still refresh on a timer, so nothing is lost.");
+  parts.push(
+    "Pages refresh on a timer instead, so nothing is more than about fifteen seconds out of date.",
+  );
   return parts.join(" ");
 }
 
