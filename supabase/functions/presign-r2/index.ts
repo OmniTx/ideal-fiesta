@@ -79,7 +79,8 @@ function json(
   });
 }
 
-async function getUserId(authHeader: string | null): Promise<string | null> {
+/** Resolves the caller of an authenticated request, or null when anonymous. */
+async function getUser(authHeader: string | null) {
   if (!authHeader) return null;
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
@@ -93,7 +94,7 @@ async function getUserId(authHeader: string | null): Promise<string | null> {
   } = await supabase.auth.getUser();
 
   if (error || !user) return null;
-  return user.id;
+  return user;
 }
 
 Deno.serve(async (req: Request) => {
@@ -111,9 +112,15 @@ Deno.serve(async (req: Request) => {
     return json({ error: "R2 is not configured" }, 500, origin);
   }
 
-  const userId = await getUserId(req.headers.get("Authorization"));
-  if (!userId) {
+  const user = await getUser(req.headers.get("Authorization"));
+  if (!user) {
     return json({ error: "Unauthorized" }, 401, origin);
+  }
+
+  // Issuing presigned URLs into the public media bucket is an admin-only
+  // action: holding a valid session on its own is not enough.
+  if (user.app_metadata?.role !== "admin") {
+    return json({ error: "Admin role required" }, 403, origin);
   }
 
   let payload: {
@@ -140,6 +147,11 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    // aws4fetch query-signing covers the host only, so the PUT's Content-Type
+    // and Content-Length fall outside the signature and the object is stored
+    // with whatever type the uploader sent. Serve the media domain with
+    // `X-Content-Type-Options: nosniff` (a Cloudflare response-header rule) so a
+    // mislabelled object can never be interpreted as active content.
     const key = `menu/${crypto.randomUUID()}.${ext}`;
     const url = new URL(`${R2_ENDPOINT}/${R2_BUCKET}/${key}`);
     url.searchParams.set("X-Amz-Expires", String(MAX_EXPIRES_SECONDS));

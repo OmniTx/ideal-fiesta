@@ -1,10 +1,10 @@
 "use client";
 
 import { broadcastRealtimeEvent } from "@/lib/realtime";
+import { getVisitorId, getVisitorSecret } from "@/lib/visitor-identity";
 import { createClient } from "@/utils/supabase/client";
 import type { AnalyticsVisitor } from "@/lib/types/database";
 
-const VISITOR_KEY = "foundry_visitor_id";
 const SESSION_KEY = "foundry_session_id";
 const GEO_CACHE_KEY = "foundry_geo_cache_v3";
 
@@ -26,21 +26,6 @@ export interface GeoInfo {
 
 function uid(prefix = "v"): string {
   return `${prefix}_${Math.random().toString(36).substring(2, 11)}_${Date.now().toString(36)}`;
-}
-
-/** Persistent visitor ID, stable across sessions on this device. */
-export function getVisitorId(): string {
-  if (typeof window === "undefined") return "ssr";
-  try {
-    let id = localStorage.getItem(VISITOR_KEY);
-    if (!id) {
-      id = uid("v");
-      localStorage.setItem(VISITOR_KEY, id);
-    }
-    return id;
-  } catch {
-    return uid("v");
-  }
 }
 
 /** Session ID, reset when the tab/browser is closed. */
@@ -275,10 +260,11 @@ interface EventInsert {
 }
 
 /**
- * Persist a visitor snapshot. RLS allows anonymous insert/update on
- * analytics_visitors, so this works for every visitor — no admin session or
- * open dashboard required. Only the columns passed in are written, so a plain
- * pageview never clobbers a previously captured name/phone/email.
+ * Persist a visitor snapshot. RLS lets an anonymous browser insert/update only
+ * the analytics_visitors row carrying its own capability token, so this works
+ * with no admin session or open dashboard. Only the columns passed in are
+ * written, so a plain pageview never clobbers a previously captured
+ * name/phone/email.
  */
 async function upsertVisitor(fields: VisitorUpsert): Promise<void> {
   try {
@@ -314,6 +300,7 @@ export async function trackVisit(pagePath: string): Promise<void> {
 
   const visitorPayload: VisitorUpsert = {
     visitor_id: visitorId,
+    visitor_secret: getVisitorSecret(),
     last_seen: new Date().toISOString(),
     last_ip: geo.ip,
     city: geo.city,
@@ -344,15 +331,9 @@ export async function trackVisit(pagePath: string): Promise<void> {
     },
   });
 
-  void broadcastRealtimeEvent("analytics_event", {
-    visitorId,
-    pagePath,
-    visitor: visitorPayload,
-    deviceModel: device.deviceModel,
-    ip: geo.ip,
-    city: geo.city,
-    country: geo.country,
-  });
+  // Signal only. Telemetry stays in Postgres and reaches the dashboard through
+  // an RLS-scoped read — customer data never crosses a Realtime channel.
+  void broadcastRealtimeEvent("analytics_event", { visitorId, pagePath });
 }
 
 /** Track a menu item tap. */
@@ -395,6 +376,7 @@ export async function captureCustomerLead(lead: {
 
   const updateData: VisitorUpsert = {
     visitor_id: visitorId,
+    visitor_secret: getVisitorSecret(),
     name: lead.name?.trim() || null,
     phone: lead.phone?.trim() || null,
     email: lead.email?.trim().toLowerCase() || null,
@@ -420,15 +402,9 @@ export async function captureCustomerLead(lead: {
     metadata: { source: lead.source ?? null },
   });
 
-  void broadcastRealtimeEvent("lead_captured", {
-    visitorId,
-    name: lead.name,
-    phone: lead.phone,
-    email: lead.email,
-    deviceModel: device.deviceModel,
-    location: [geo.city, geo.country].filter(Boolean).join(", ") || "Unknown Location",
-    visitor: updateData,
-  });
+  // Signal only: the contact details are read back by the signed-in dashboard
+  // through RLS. Never put customer PII on a Realtime channel.
+  void broadcastRealtimeEvent("lead_captured", { visitorId });
 
   return true;
 }

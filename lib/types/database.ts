@@ -107,6 +107,8 @@ export type Json =
 
 export interface AnalyticsVisitor {
   visitor_id: string;
+  /** Capability token this browser proves via the x-visitor-secret header. */
+  visitor_secret?: string | null;
   name: string | null;
   phone: string | null;
   email: string | null;

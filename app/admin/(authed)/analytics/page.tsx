@@ -27,6 +27,7 @@ export default function AdminAnalyticsPage() {
   const [activeTab, setActiveTab] = React.useState<"visitors" | "leads" | "items">("visitors");
 
   const supabase = React.useMemo(() => createClient(), []);
+  const reloadTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Fetch telemetry from the dedicated analytics tables. Anonymous visitors
   // write directly via RLS, so data lands even when no admin is online.
@@ -57,68 +58,23 @@ export default function AdminAnalyticsPage() {
   React.useEffect(() => {
     void loadData();
 
-    // Subscribe to live realtime analytics and lead events on REALTIME_CHANNEL
-    const unsubscribe = subscribeToAnalytics((msg: unknown) => {
-      const envelope = msg as { payload?: Record<string, unknown> } | undefined;
-      const payload = envelope?.payload;
-
-      if (payload?.visitor) {
-        const incoming = payload.visitor as AnalyticsVisitor;
-
-        setVisitors((prev) => {
-          const existsIndex = prev.findIndex((v) => v.visitor_id === incoming.visitor_id);
-          let nextList: AnalyticsVisitor[];
-          if (existsIndex >= 0) {
-            nextList = [...prev];
-            nextList[existsIndex] = {
-              ...nextList[existsIndex],
-              ...incoming,
-              last_seen: incoming.last_seen || new Date().toISOString(),
-            };
-          } else {
-            nextList = [
-              {
-                ...incoming,
-                first_seen: incoming.first_seen ?? new Date().toISOString(),
-                total_visits: incoming.total_visits ?? 1,
-              } as AnalyticsVisitor,
-              ...prev,
-            ];
-          }
-          nextList.sort((a, b) => new Date(b.last_seen).getTime() - new Date(a.last_seen).getTime());
-          return nextList;
-        });
-
-        if (payload.pagePath) {
-          const newEvent: AnalyticsEvent = {
-            id: `live_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-            visitor_id: incoming.visitor_id,
-            session_id: "s_live",
-            ip: incoming.last_ip,
-            event_type: "pageview",
-            page_path: payload.pagePath as string,
-            created_at: new Date().toISOString(),
-            metadata: {
-              deviceModel: (payload.deviceModel as string) || incoming.device_model,
-              ip: (payload.ip as string) || incoming.last_ip,
-              city: (payload.city as string) || incoming.city,
-              country: (payload.country as string) || incoming.country,
-            },
-          };
-          setEvents((prev) => [newEvent, ...prev.slice(0, 199)]);
-        }
-
-        const loc = [incoming.city, incoming.country].filter(Boolean).join(", ");
-        toast.info(
-          `📱 Live visit: ${incoming.device_model || "Mobile"} ${loc ? `(${loc})` : ""} on ${payload.pagePath || "/"}`,
-          { duration: 4500 },
-        );
-      } else {
-        void loadData();
+    // Signals from the private admin topic are opaque pings, never customer
+    // data: read the rows back through RLS and coalesce bursts into one query.
+    const unsubscribe = subscribeToAnalytics(({ event }) => {
+      if (event === "lead_captured") {
+        toast.info("New customer lead captured", { duration: 4000 });
       }
+
+      if (reloadTimer.current) clearTimeout(reloadTimer.current);
+      reloadTimer.current = setTimeout(() => {
+        void loadData();
+      }, 1500);
     });
 
-    return () => unsubscribe();
+    return () => {
+      if (reloadTimer.current) clearTimeout(reloadTimer.current);
+      unsubscribe();
+    };
   }, [loadData]);
 
   // Derived metrics

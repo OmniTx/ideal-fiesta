@@ -1,6 +1,17 @@
 import { createClient } from "@/utils/supabase/client";
 
+/**
+ * Public storefront topic: menu and settings sync. Deliberately carries no
+ * customer data, so anonymous browsers may read and write it.
+ */
 export const REALTIME_CHANNEL = "foundry-live-sync";
+
+/**
+ * Customer-activity topic for the signed-in admin dashboard. Realtime
+ * Authorization restricts subscriptions to admins, and the payloads are opaque
+ * "something changed" pings — the dashboard re-reads the rows through RLS.
+ */
+export const ADMIN_REALTIME_CHANNEL = "foundry-admin-live";
 
 export type RealtimeEvent =
   | "menu_updated"
@@ -8,9 +19,22 @@ export type RealtimeEvent =
   | "analytics_event"
   | "lead_captured";
 
+/** Events about customer activity, which travel on the private topic only. */
+const ADMIN_EVENTS: readonly RealtimeEvent[] = [
+  "analytics_event",
+  "lead_captured",
+];
+
+function topicFor(event: RealtimeEvent): string {
+  return ADMIN_EVENTS.includes(event) ? ADMIN_REALTIME_CHANNEL : REALTIME_CHANNEL;
+}
+
 /**
  * Broadcast an event across all connected browser windows (storefront & admin).
  * Uses Supabase Realtime Broadcast for instant, sub-second delivery.
+ *
+ * Never pass customer PII here: everything published on these topics is
+ * readable by every client that can join them.
  */
 export async function broadcastRealtimeEvent(
   event: RealtimeEvent,
@@ -19,7 +43,9 @@ export async function broadcastRealtimeEvent(
   if (typeof window === "undefined") return;
 
   const supabase = createClient();
-  const channel = supabase.channel(REALTIME_CHANNEL);
+  const channel = supabase.channel(topicFor(event), {
+    config: { private: true },
+  });
 
   try {
     await new Promise<void>((resolve) => {
@@ -54,7 +80,9 @@ export function subscribeToMenuChanges(onUpdate: () => void): () => void {
   if (typeof window === "undefined") return () => {};
 
   const supabase = createClient();
-  const channel = supabase.channel(REALTIME_CHANNEL);
+  const channel = supabase.channel(REALTIME_CHANNEL, {
+    config: { private: true },
+  });
 
   channel
     .on("broadcast", { event: "menu_updated" }, () => {
@@ -97,7 +125,9 @@ export function subscribeToSettingsChanges(
   if (typeof window === "undefined") return () => {};
 
   const supabase = createClient();
-  const channel = supabase.channel(REALTIME_CHANNEL);
+  const channel = supabase.channel(REALTIME_CHANNEL, {
+    config: { private: true },
+  });
 
   channel
     .on("broadcast", { event: "settings_updated" }, (payload) => {
@@ -129,20 +159,41 @@ export function subscribeToSettingsChanges(
   };
 }
 
+export interface AnalyticsSignal {
+  event: "analytics_event" | "lead_captured";
+  payload: Record<string, unknown>;
+}
+
 /**
- * Subscribe to analytics and new lead events
+ * Subscribe to customer-activity pings on the private admin topic. The payloads
+ * carry no customer data, so a signal means "read the rows again" — the data
+ * itself only ever arrives through an RLS-scoped SELECT.
  */
 export function subscribeToAnalytics(
-  onUpdate: (payload?: unknown) => void,
+  onSignal: (signal: AnalyticsSignal) => void,
 ): () => void {
   if (typeof window === "undefined") return () => {};
 
   const supabase = createClient();
-  const channel = supabase.channel(REALTIME_CHANNEL);
+  const channel = supabase.channel(ADMIN_REALTIME_CHANNEL, {
+    config: { private: true },
+  });
+
+  const forward =
+    (event: AnalyticsSignal["event"]) =>
+    (message: { payload?: unknown }) => {
+      onSignal({
+        event,
+        payload:
+          message?.payload && typeof message.payload === "object"
+            ? (message.payload as Record<string, unknown>)
+            : {},
+      });
+    };
 
   channel
-    .on("broadcast", { event: "analytics_event" }, (p) => onUpdate(p))
-    .on("broadcast", { event: "lead_captured" }, (p) => onUpdate(p))
+    .on("broadcast", { event: "analytics_event" }, forward("analytics_event"))
+    .on("broadcast", { event: "lead_captured" }, forward("lead_captured"))
     .subscribe();
 
   return () => {
