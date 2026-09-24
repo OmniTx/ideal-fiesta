@@ -174,6 +174,9 @@ export function ShopHeader() {
             ? "pointer-events-auto opacity-100"
             : "pointer-events-none opacity-0"
         }`}
+        // Faded out with opacity, so without this the closed drawer's links stay
+        // in the tab order and a keyboard user lands on an invisible nav.
+        inert={!drawerOpen}
       >
         {/* Backdrop */}
         <div

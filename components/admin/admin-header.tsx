@@ -88,7 +88,10 @@ export function AdminHeader() {
             ? "pointer-events-auto opacity-100"
             : "pointer-events-none opacity-0"
         }`}
-        aria-hidden={!navOpen}
+        // `inert`, not `aria-hidden`: it hides the closed drawer from assistive
+        // tech AND takes its controls out of the tab order. Marking a subtree
+        // that still holds focus as aria-hidden is what browsers now block.
+        inert={!navOpen}
       >
         <div
           className="absolute inset-0 bg-black/40 backdrop-blur-sm"

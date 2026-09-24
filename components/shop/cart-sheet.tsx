@@ -64,7 +64,10 @@ export function CartSheet() {
       className={`fixed inset-0 z-50 transition-opacity duration-300 ${
         isOpen ? "pointer-events-auto" : "pointer-events-none"
       }`}
-      aria-hidden={!isOpen}
+      // `inert` keeps the closed basket out of the tab order as well as out of
+      // the accessibility tree; `aria-hidden` alone would leave its controls
+      // focusable, which browsers now block.
+      inert={!isOpen}
     >
       <div
         className={`absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity ${
