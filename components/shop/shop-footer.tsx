@@ -4,6 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Instagram, MapPin, Clock, ShieldCheck, Heart } from "lucide-react";
+import { GLUTEN_FREE_FOOTER } from "@/lib/copy";
 import { useStoreSettings } from "@/lib/hooks/use-store-settings";
 
 export function ShopFooter() {
@@ -26,8 +27,7 @@ export function ShopFooter() {
               />
             </div>
             <p className="text-sm leading-relaxed text-background/70">
-              A 100% gluten-free kitchen in Indooroopilly. No wheat on the
-              premises, no shared toasters, no asking required.
+              {GLUTEN_FREE_FOOTER}
             </p>
             <div className="flex items-center gap-3 pt-2">
               <Link
@@ -66,7 +66,7 @@ export function ShopFooter() {
               </li>
               <li>
                 <Link
-                  href="/#story"
+                  href="/story"
                   className="transition-colors hover:text-background"
                 >
                   Our Kitchen & Story
@@ -138,9 +138,10 @@ export function ShopFooter() {
         <div className="mt-12 border-t border-background/15 pt-6 text-xs text-background/55">
           <p className="mb-5 max-w-3xl leading-relaxed">
             We collect anonymous visit statistics (device type, approximate
-            location and pages viewed) to improve the menu. Contact details you
-            choose to share are used only for Foundry updates and are never sold
-            or shared.
+            location and pages viewed) to improve the menu. If you join Foundry
+            Rewards we keep your first name and mobile number so we can apply your
+            perk — never sold, never shared, and you can ask us to remove it at
+            the counter.
           </p>
           <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
             <p suppressHydrationWarning>
@@ -148,10 +149,15 @@ export function ShopFooter() {
               Brisbane, Australia.
             </p>
             <div className="flex items-center gap-4">
-              <span className="flex items-center gap-1 text-background/55">
+              <span className="flex items-center gap-1 text-background/70">
                 Brewed with{" "}
-                <Heart className="h-3 w-3 fill-current text-primary" /> in
-                Queensland
+                {/* `primary` is admin-editable and can end up dark on this
+                    surface — `primary-foreground` is a fixed light token. */}
+                <Heart
+                  className="h-3.5 w-3.5 fill-current text-primary-foreground"
+                  aria-hidden="true"
+                />{" "}
+                in Queensland
               </span>
             </div>
           </div>

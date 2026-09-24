@@ -1,8 +1,12 @@
 "use client";
 
 import * as React from "react";
-import { X, ArrowLeft } from "lucide-react";
-import type { MenuItem } from "@/lib/types/database";
+import { X, ArrowLeft, Minus, Plus, ShoppingBag } from "lucide-react";
+import { toast } from "sonner";
+
+import { useCart } from "@/components/shop/cart-provider";
+import { formatAUD } from "@/lib/money";
+import type { MenuItem, OrderModifier } from "@/lib/types/database";
 import { CupArt, getCupType, type CupType } from "./cup-art";
 
 const VOLUMES: Record<string, string> = {
@@ -64,6 +68,9 @@ export function ProductSheet({ item, onClose }: ProductSheetProps) {
     "White Gluten-Free Toast",
   );
   const [selectedSides, setSelectedSides] = React.useState<string[]>([]);
+  const [quantity, setQuantity] = React.useState(1);
+
+  const { addLine, openCart } = useCart();
 
   // Reset modifiers when opening a new item
   React.useEffect(() => {
@@ -82,6 +89,7 @@ export function ProductSheet({ item, onClose }: ProductSheetProps) {
     setSelectedShot("Standard Shot");
     setSelectedBread("White Gluten-Free Toast");
     setSelectedSides([]);
+    setQuantity(1);
   }, [item]);
 
   const isPushedRef = React.useRef(false);
@@ -199,6 +207,52 @@ export function ProductSheet({ item, onClose }: ProductSheetProps) {
 
   const finalTotal = basePrice + extrasTotal;
   const cupType = getCupType(item.name, item.category);
+
+  // Only options that differ from the default are worth printing on a ticket.
+  const chosenModifiers: OrderModifier[] = [];
+  if (isDrink) {
+    const milk = MILK_OPTIONS.find((option) => option.label === selectedMilk);
+    if (milk && selectedMilk !== "Full Cream") {
+      chosenModifiers.push({ label: milk.label, price: milk.price });
+    }
+    const syrup = SYRUP_OPTIONS.find((option) => option.label === selectedSyrup);
+    if (syrup && selectedSyrup !== "None") {
+      chosenModifiers.push({ label: syrup.label, price: syrup.price });
+    }
+    const shot = SHOT_OPTIONS.find((option) => option.label === selectedShot);
+    if (shot && selectedShot !== "Standard Shot") {
+      chosenModifiers.push({ label: shot.label, price: shot.price });
+    }
+  }
+  if (isFood) {
+    const bread = BREAD_OPTIONS.find((option) => option.label === selectedBread);
+    if (bread && selectedBread !== "White Gluten-Free Toast") {
+      chosenModifiers.push({ label: bread.label, price: bread.price });
+    }
+    selectedSides.forEach((sideLabel) => {
+      const side = FOOD_SIDES.find((option) => option.label === sideLabel);
+      if (side) chosenModifiers.push({ label: side.label, price: side.price });
+    });
+  }
+
+  const addToBasket = () => {
+    addLine(
+      {
+        menuItemId: item.id,
+        name: item.name,
+        category: item.category,
+        size: sizesAvailable.length > 0 ? selectedSize : null,
+        modifiers: chosenModifiers,
+        unitPrice: finalTotal,
+      },
+      quantity,
+    );
+
+    toast.success(`${quantity} × ${item.name} added to your basket`, {
+      action: { label: "View basket", onClick: () => openCart() },
+    });
+    handleClose();
+  };
 
   const toggleSide = (label: string) => {
     setSelectedSides((prev) =>
@@ -481,32 +535,62 @@ export function ProductSheet({ item, onClose }: ProductSheetProps) {
           <p className="mt-8 text-xs leading-relaxed text-muted-foreground">
             Every item is made to order in our dedicated 100% gluten-free
             kitchen. Full dietary and allergen details are available at the
-            counter. We do not take online payments yet.
+            counter. Add it to your basket for a counter ticket — you pay at the
+            bench, nothing is charged here.
           </p>
         </div>
       </div>
 
-      {/* Floating Fixed Bottom Total Card (Matching Sample) */}
+      {/* Floating Fixed Bottom Total Card */}
       <div className="pointer-events-none fixed inset-x-0 bottom-0 z-30 p-3 sm:p-5">
-        <div className="pointer-events-auto mx-auto flex max-w-xl items-center justify-between gap-4 rounded-2xl border border-border bg-background/95 px-5 py-3.5 shadow-2xl backdrop-blur-md transition-all duration-200 hover:border-foreground/40">
+        <div className="pointer-events-auto mx-auto flex max-w-xl flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-background/95 px-5 py-3.5 shadow-2xl backdrop-blur-md sm:flex-nowrap">
           <div className="min-w-0 flex-1">
             <span className="block truncate text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
-              Your {selectedSize ? `${selectedSize} ` : ""}{item.name}
+              {quantity} × {selectedSize ? `${selectedSize} ` : ""}
+              {item.name}
             </span>
             <div className="flex items-baseline gap-1.5">
               <span className="font-display text-2xl font-bold tabular-nums text-foreground sm:text-3xl">
-                ${finalTotal.toFixed(2)}
+                {formatAUD(finalTotal * quantity)}
               </span>
               <span className="text-xs font-medium text-muted-foreground">AUD</span>
             </div>
           </div>
 
-          <div className="shrink-0 text-right">
-            <div className="inline-flex items-center gap-1.5 rounded-full bg-foreground px-3.5 py-1.5 text-xs font-semibold text-background shadow-sm">
-              <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
-              <span>Order at Counter</span>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setQuantity((current) => Math.max(1, current - 1))}
+                disabled={quantity <= 1}
+                className="grid h-9 w-9 place-items-center rounded-full border border-border text-foreground transition hover:bg-muted disabled:opacity-40"
+                aria-label="Reduce quantity"
+              >
+                <Minus className="h-3.5 w-3.5" />
+              </button>
+              <span className="w-6 text-center text-sm font-bold tabular-nums">
+                {quantity}
+              </span>
+              <button
+                type="button"
+                onClick={() => setQuantity((current) => Math.min(20, current + 1))}
+                disabled={quantity >= 20}
+                className="grid h-9 w-9 place-items-center rounded-full border border-border text-foreground transition hover:bg-muted disabled:opacity-40"
+                aria-label="Increase quantity"
+              >
+                <Plus className="h-3.5 w-3.5" />
+              </button>
             </div>
-            <p className="mt-1 text-[10px] text-muted-foreground">Level 3 Bench</p>
+
+            <button
+              type="button"
+              onClick={addToBasket}
+              disabled={!item.is_available}
+              className="inline-flex items-center gap-1.5 rounded-full bg-foreground px-4 py-2.5 text-xs font-semibold text-background shadow-sm transition hover:bg-foreground/85 disabled:opacity-50"
+            >
+              <ShoppingBag className="h-3.5 w-3.5" />
+              <span>{item.is_available ? "Add to basket" : "Sold out today"}</span>
+            </button>
           </div>
         </div>
       </div>

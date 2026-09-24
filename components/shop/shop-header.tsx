@@ -14,12 +14,19 @@ import {
   UtensilsCrossed,
   ShieldCheck,
   Coffee,
+  Gift,
+  ShoppingBag,
 } from "lucide-react";
+
+import { useCart } from "@/components/shop/cart-provider";
+import { useRewardsSignup } from "@/components/shop/rewards-provider";
+import { GLUTEN_FREE_RIBBON } from "@/lib/copy";
 import { useStoreSettings } from "@/lib/hooks/use-store-settings";
-import { findTodayHours } from "@/lib/time";
 
 export function ShopHeader() {
   const { todayHours } = useStoreSettings();
+  const { count, isReady, openCart } = useCart();
+  const { member, openSignup } = useRewardsSignup();
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const pathname = usePathname();
 
@@ -45,15 +52,12 @@ export function ShopHeader() {
       {/* Top Announcement Ribbon — normal flow, so it scrolls away with the
           page instead of staying pinned above the topbar. */}
       <div className="bg-primary px-4 py-2 text-center text-xs font-semibold tracking-wider text-primary-foreground sm:text-sm">
-        <span>100% gluten free kitchen.</span>{" "}
-        <span className="font-normal opacity-90">
-          Nothing on the premises contains wheat. No cross-contamination.
-        </span>
+        <span>{GLUTEN_FREE_RIBBON}</span>
       </div>
 
       {/* Main Sticky Topbar */}
       <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur-sm">
-        <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-4 sm:px-6">
+        <div className="mx-auto flex h-16 max-w-5xl items-center justify-between gap-2 px-4 sm:px-6">
           {/* Brand Logo */}
           <Link
             href="/"
@@ -94,7 +98,7 @@ export function ShopHeader() {
               Specials
             </Link>
             <Link
-              href="/#story"
+              href="/story"
               className="text-sm font-semibold tracking-wider uppercase text-muted-foreground transition-colors hover:text-foreground"
             >
               Story
@@ -108,19 +112,43 @@ export function ShopHeader() {
           </nav>
 
           {/* Right Action Buttons */}
-          <div className="flex shrink-0 items-center gap-2">
-            <Link
-              href="/menu"
-              className="hidden rounded-full bg-foreground px-4 py-2 text-xs font-semibold tracking-wider text-background uppercase transition hover:bg-foreground/85 sm:inline-flex"
+          <div className="flex shrink-0 items-center gap-1.5">
+            {/* Rewards — visible from the very top of the page, on every breakpoint */}
+            <button
+              type="button"
+              onClick={openSignup}
+              className="inline-flex items-center gap-1.5 rounded-full bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground transition hover:opacity-90 sm:px-4"
             >
-              Explore Menu
-            </Link>
+              <Gift className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">
+                {member ? member.member_code : "Join Rewards · 10% off"}
+              </span>
+              <span className="sm:hidden">{member ? "Perk" : "Rewards"}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={openCart}
+              className="relative grid h-10 w-10 place-items-center rounded-full text-foreground transition hover:bg-muted"
+              aria-label={
+                isReady && count > 0
+                  ? `Open basket, ${count} items`
+                  : "Open basket"
+              }
+            >
+              <ShoppingBag className="h-5 w-5" />
+              {isReady && count > 0 ? (
+                <span className="absolute -top-0.5 -right-0.5 grid h-5 min-w-[1.25rem] place-items-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
+                  {count}
+                </span>
+              ) : null}
+            </button>
 
             <Link
               href="https://www.instagram.com/foundry_artisancoffee/"
               target="_blank"
               rel="noopener noreferrer"
-              className="grid h-10 w-10 place-items-center rounded-full text-foreground transition hover:bg-muted"
+              className="hidden h-10 w-10 place-items-center rounded-full text-foreground transition hover:bg-muted lg:grid"
               aria-label="Foundry on Instagram"
             >
               <Instagram className="h-4 w-4" />
@@ -182,7 +210,32 @@ export function ShopHeader() {
 
           {/* Drawer Links */}
           <div className="flex-1 overflow-y-auto px-4 py-6">
-            <div className="flex flex-col divide-y divide-border">
+            {/* Rewards is the first thing in the drawer */}
+            <button
+              type="button"
+              onClick={() => {
+                setDrawerOpen(false);
+                openSignup();
+              }}
+              className="flex w-full items-center justify-between gap-3 rounded-2xl bg-primary p-4 text-left text-primary-foreground transition hover:opacity-90"
+            >
+              <span>
+                <span className="flex items-center gap-1.5 text-xs font-semibold tracking-wider uppercase opacity-85">
+                  <Gift className="h-3.5 w-3.5" />
+                  Foundry Rewards
+                </span>
+                <span className="mt-1 block font-display text-base font-bold">
+                  {member
+                    ? `You're a member · ${member.member_code}`
+                    : "Join & get 10% off your next visit"}
+                </span>
+              </span>
+              <span className="shrink-0 text-xs font-semibold underline">
+                {member ? "View" : "Join"}
+              </span>
+            </button>
+
+            <div className="mt-6 flex flex-col divide-y divide-border">
               <Link
                 href="/menu"
                 onClick={() => setDrawerOpen(false)}
@@ -205,7 +258,7 @@ export function ShopHeader() {
                 </span>
               </Link>
               <Link
-                href="/#story"
+                href="/story"
                 onClick={() => setDrawerOpen(false)}
                 className="flex items-center justify-between py-4 text-base font-semibold tracking-wider uppercase text-foreground hover:text-primary"
               >
@@ -258,7 +311,7 @@ export function ShopHeader() {
           {/* Drawer Footer */}
           <div className="border-t border-border p-6 text-center text-xs text-muted-foreground">
             <p className="font-medium text-foreground">
-              100% Dedicated Gluten-Free Kitchen
+              Dedicated 100% gluten-free kitchen
             </p>
             <p className="mt-1">Brisbane, Queensland</p>
           </div>

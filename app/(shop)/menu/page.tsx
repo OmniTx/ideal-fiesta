@@ -11,6 +11,7 @@ import { useStoreSettings } from "@/lib/hooks/use-store-settings";
 
 import { subscribeToMenuChanges } from "@/lib/realtime";
 import { trackItemClick } from "@/lib/analytics";
+import { COUNTER_ORDER_NOTE } from "@/lib/copy";
 
 interface CategoryMeta {
   id: MenuCategory;
@@ -379,9 +380,8 @@ export default function ShopMenuPage() {
           <p className="font-semibold text-foreground">
             Counter Service Only · Made to Order
           </p>
-          <p className="mt-1 text-xs">
-            We do not take online payments or phone-ahead orders. Please visit
-            our counter at Level 3, Indooroopilly Shopping Centre.
+          <p className="mx-auto mt-1 max-w-xl text-xs">
+            {COUNTER_ORDER_NOTE}
           </p>
         </div>
       </div>
