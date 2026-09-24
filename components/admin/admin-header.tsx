@@ -7,6 +7,7 @@ import { Coffee, LogOut, Menu, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { AdminNav } from "@/components/admin/admin-nav";
+import { RealtimeStatusBadge } from "@/components/admin/realtime-status";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/utils/supabase/client";
 
@@ -66,7 +67,8 @@ export function AdminHeader() {
             </span>
           </Link>
 
-          <div className="ml-auto flex items-center gap-1">
+          <div className="ml-auto flex items-center gap-2">
+            <RealtimeStatusBadge />
             <Button
               variant="ghost"
               size="icon"

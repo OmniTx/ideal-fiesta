@@ -244,6 +244,44 @@ export function subscribeToOrderSignals(onSignal: () => void): () => void {
   };
 }
 
+export type RealtimeStatus = "connecting" | "connected" | "error";
+
+/**
+ * Probes whether this browser can actually join the realtime topic, and reports
+ * the result.
+ *
+ * A WebSocket that connects proves nothing — the join is a message on top of it
+ * and can be rejected by the `realtime.messages` policies. The socket showed
+ * `101 Switching Protocols` while nothing was ever delivered, which is exactly
+ * the failure this makes visible instead of silent.
+ */
+export function subscribeToRealtimeHealth(
+  onStatus: (status: RealtimeStatus) => void,
+): () => void {
+  if (typeof window === "undefined") return () => {};
+
+  onStatus("connecting");
+
+  const supabase = createClient();
+  const channel = supabase.channel(REALTIME_CHANNEL, {
+    config: { private: true },
+  });
+
+  channel.subscribe((status) => {
+    if (status === "SUBSCRIBED") {
+      onStatus("connected");
+      return;
+    }
+    if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+      onStatus("error");
+    }
+  });
+
+  return () => {
+    void supabase.removeChannel(channel);
+  };
+}
+
 /**
  * Live table watcher for the admin panel (order tickets, rewards members).
  *
