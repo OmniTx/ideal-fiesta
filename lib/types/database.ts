@@ -125,6 +125,8 @@ export interface AnalyticsVisitor {
   browser: string | null;
   screen_res: string | null;
   user_agent: string | null;
+  /** Set when the device reports leaving; cleared by the next visit. */
+  left_at: string | null;
 }
 
 export interface AnalyticsEvent {

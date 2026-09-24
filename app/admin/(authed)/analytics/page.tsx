@@ -17,6 +17,7 @@ import {
 import { toast } from "sonner";
 import { createClient } from "@/utils/supabase/client";
 import { subscribeToAnalytics } from "@/lib/realtime";
+import { isVisitorLive } from "@/lib/presence";
 import { fetchRewardsMembers, formatPhone } from "@/lib/rewards";
 import type {
   AnalyticsVisitor,
@@ -96,9 +97,8 @@ export default function AdminAnalyticsPage() {
 
   // Derived metrics
   const now = Date.now();
-  const fifteenMinAgo = now - 15 * 60 * 1000;
-  const activeNow = visitors.filter(
-    (v) => new Date(v.last_seen).getTime() > fifteenMinAgo,
+  const activeNow = visitors.filter((visitor) =>
+    isVisitorLive(visitor, now),
   ).length;
 
   // Visits per visitor, counted from pageview events (durable rows).
@@ -283,7 +283,7 @@ export default function AdminAnalyticsPage() {
         {/* Card 1: Live Active Visitors */}
         <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
           <div className="flex items-center justify-between text-muted-foreground">
-            <span className="text-xs font-medium">Live Active (15m)</span>
+            <span className="text-xs font-medium">On The Storefront Now</span>
             <div className="flex items-center gap-1.5">
               <span className="relative flex h-2.5 w-2.5">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
@@ -296,7 +296,7 @@ export default function AdminAnalyticsPage() {
             <span className="font-display text-3xl font-bold tracking-tight">
               {activeNow}
             </span>
-            <span className="text-xs text-muted-foreground">online now</span>
+            <span className="text-xs text-muted-foreground">visible now</span>
           </div>
         </div>
 
@@ -576,12 +576,22 @@ export default function AdminAnalyticsPage() {
                         {v.screen_res || "—"}
                       </td>
 
-                      <td className="px-4 py-3 text-muted-foreground">
-                        {new Date(v.last_seen).toLocaleTimeString("en-AU", {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                          second: "2-digit",
-                        })}
+                      <td className="px-4 py-3">
+                        <span className="flex items-center gap-1.5">
+                          <span
+                            className={`h-2 w-2 shrink-0 rounded-full ${
+                              isVisitorLive(v, now) ? "bg-emerald-500" : "bg-border"
+                            }`}
+                            aria-hidden="true"
+                          />
+                          <span className="text-muted-foreground">
+                            {new Date(v.last_seen).toLocaleTimeString("en-AU", {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                              second: "2-digit",
+                            })}
+                          </span>
+                        </span>
                       </td>
                     </tr>
                   ))}

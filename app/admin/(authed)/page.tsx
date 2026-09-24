@@ -27,6 +27,7 @@ import { useOrders } from "@/lib/hooks/use-orders";
 import { useRewards } from "@/lib/hooks/use-rewards";
 import { formatAUD } from "@/lib/money";
 import { formatOrderNumber } from "@/lib/orders";
+import { liveSinceIso } from "@/lib/presence";
 import { formatVenueTime, venueDateString } from "@/lib/time";
 import { createClient } from "@/utils/supabase/client";
 
@@ -53,13 +54,17 @@ export default function AdminOverviewPage() {
 
   React.useEffect(() => {
     let isActive = true;
-    const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+    const since = liveSinceIso();
 
     void (async () => {
+      // Seen recently AND not reported gone since. `left_at` is what makes this
+      // drop the moment someone closes the tab, rather than at the end of a
+      // timeout window.
       const { count } = await supabase
         .from("analytics_visitors")
         .select("visitor_id", { count: "exact", head: true })
-        .gte("last_seen", fifteenMinutesAgo);
+        .gte("last_seen", since)
+        .or(`left_at.is.null,left_at.lte.${since}`);
       if (isActive) setLiveVisitors(count ?? 0);
     })();
 
@@ -106,9 +111,9 @@ export default function AdminOverviewPage() {
           tone="accent"
         />
         <AdminStatCard
-          label="Live visitors (15m)"
+          label="On the storefront now"
           value={liveVisitors ?? "—"}
-          hint="Storefront activity"
+          hint="Live customers browsing"
           icon={Users}
           href="/admin/analytics"
         />

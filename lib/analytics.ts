@@ -261,6 +261,42 @@ interface EventInsert {
 }
 
 /**
+ * Everything the visitor row needs.
+ *
+ * `track_visit` overwrites every telemetry column it is handed, so a partial
+ * payload would blank the device details — which is why the presence heartbeat
+ * sends this rather than a bare timestamp.
+ */
+async function buildVisitorPayload(): Promise<{
+  payload: VisitorUpsert;
+  device: DeviceInfo;
+  geo: GeoInfo;
+}> {
+  const device = detectDevice();
+  const geo = await getGeoInfo();
+
+  return {
+    device,
+    geo,
+    payload: {
+      visitor_id: getVisitorId(),
+      visitor_secret: getVisitorSecret(),
+      last_seen: new Date().toISOString(),
+      last_ip: geo.ip,
+      city: geo.city,
+      region: geo.region,
+      country: geo.country,
+      device_type: device.deviceType,
+      device_model: device.deviceModel,
+      os: device.os,
+      browser: device.browser,
+      screen_res: device.screenRes,
+      user_agent: device.userAgent,
+    },
+  };
+}
+
+/**
  * Persist activity through `track_visit`, which takes the capability token as a
  * parameter and compares it against the stored row inside SQL.
  *
@@ -322,24 +358,7 @@ export async function trackVisit(pagePath: string): Promise<void> {
 
   const visitorId = getVisitorId();
   const sessionId = getSessionId();
-  const device = detectDevice();
-  const geo = await getGeoInfo();
-
-  const visitorPayload: VisitorUpsert = {
-    visitor_id: visitorId,
-    visitor_secret: getVisitorSecret(),
-    last_seen: new Date().toISOString(),
-    last_ip: geo.ip,
-    city: geo.city,
-    region: geo.region,
-    country: geo.country,
-    device_type: device.deviceType,
-    device_model: device.deviceModel,
-    os: device.os,
-    browser: device.browser,
-    screen_res: device.screenRes,
-    user_agent: device.userAgent,
-  };
+  const { payload: visitorPayload, device, geo } = await buildVisitorPayload();
 
   // One call: track_visit writes the visitor row and the event in a single
   // transaction, so the foreign key can no longer race ahead of the upsert.
@@ -386,4 +405,69 @@ export async function trackItemClick(itemName: string, category: string): Promis
     category,
     visitorId,
   });
+}
+
+/** How often a visible tab tells the database it is still here. */
+const HEARTBEAT_MS = 60 * 1000;
+
+/** Best-effort "I am leaving" — only ever touches this device's own row. */
+async function markVisitorLeft(): Promise<void> {
+  if (typeof window === "undefined") return;
+
+  try {
+    const supabase = createClient();
+    await supabase.rpc("mark_visitor_left", {
+      p_secret: getVisitorSecret(),
+      p_visitor_id: getVisitorId(),
+    });
+  } catch {
+    // Non-fatal. A torn-down tab may not deliver this at all, which is why the
+    // admin also has a timeout window rather than trusting the marker alone.
+  }
+}
+
+/**
+ * Keeps "who is on the site right now" honest.
+ *
+ * Without this, `last_seen` only moves on a pageview: someone reading the menu
+ * looks stale, and someone who closed the tab looks present until the window
+ * expires. So a visible tab pings once a minute, and hiding or unloading the tab
+ * reports that the visitor has gone.
+ */
+export function startPresenceTracking(): () => void {
+  if (typeof window === "undefined") return () => {};
+
+  let stopped = false;
+
+  const heartbeat = () => {
+    if (stopped || document.visibilityState !== "visible") return;
+    void (async () => {
+      const { payload } = await buildVisitorPayload();
+      await recordActivity({ visitor: payload });
+    })();
+  };
+
+  const timer = setInterval(heartbeat, HEARTBEAT_MS);
+
+  const handleVisibility = () => {
+    if (document.visibilityState === "visible") {
+      heartbeat();
+    } else {
+      void markVisitorLeft();
+    }
+  };
+
+  const handlePageHide = () => {
+    void markVisitorLeft();
+  };
+
+  document.addEventListener("visibilitychange", handleVisibility);
+  window.addEventListener("pagehide", handlePageHide);
+
+  return () => {
+    stopped = true;
+    clearInterval(timer);
+    document.removeEventListener("visibilitychange", handleVisibility);
+    window.removeEventListener("pagehide", handlePageHide);
+  };
 }

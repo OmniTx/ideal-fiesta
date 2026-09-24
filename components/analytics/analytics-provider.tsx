@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { usePathname } from "next/navigation";
-import { trackVisit } from "@/lib/analytics";
+import { startPresenceTracking, trackVisit } from "@/lib/analytics";
 
 export function AnalyticsProvider() {
   const pathname = usePathname();
@@ -22,6 +22,14 @@ export function AnalyticsProvider() {
 
     return () => clearTimeout(timer);
   }, [pathname]);
+
+  // Presence is global rather than per route: one heartbeat and one leave
+  // handler for the whole session, so a customer browsing the menu keeps
+  // showing as live in the admin.
+  React.useEffect(() => {
+    if (window.location.pathname.startsWith("/admin")) return;
+    return startPresenceTracking();
+  }, []);
 
   return null;
 }
