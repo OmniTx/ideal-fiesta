@@ -112,7 +112,7 @@ export default function AdminRewardsPage() {
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Search name, mobile or member code…"
             aria-label="Search rewards members"
-            className="h-10 w-full rounded-full border border-border bg-card pl-9 pr-3 text-sm text-foreground shadow-sm placeholder:text-muted-foreground/70 focus-visible:border-primary focus-visible:outline-none"
+            className="h-10 w-full rounded-full border border-border bg-card pl-9 pr-3 text-sm text-foreground shadow-sm placeholder:text-muted-foreground/70 focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20"
           />
         </div>
 

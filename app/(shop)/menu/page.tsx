@@ -291,7 +291,7 @@ export default function ShopMenuPage() {
                           setSelectedItem(item);
                           void trackItemClick(item.name, item.category);
                         }}
-                        className={`group flex w-full items-baseline gap-2 py-3.5 text-left transition focus:outline-none ${
+                        className={`group flex w-full items-baseline gap-2 rounded-lg py-3.5 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
                           isSoldOut
                             ? "opacity-50 hover:opacity-75"
                             : "hover:text-foreground/85"
