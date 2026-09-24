@@ -63,7 +63,9 @@ grant execute on function public.owns_visitor(text) to anon, authenticated;
 -- analytics_visitors ---------------------------------------------------------
 -- The row may only be created while presenting its own token, which stops a
 -- client from planting a row and claiming a victim's visitor_id later.
+-- Both this policy's old and new names are dropped so the file can be re-run.
 drop policy if exists "analytics_visitors public insert" on public.analytics_visitors;
+drop policy if exists "analytics_visitors visitor insert" on public.analytics_visitors;
 create policy "analytics_visitors visitor insert"
   on public.analytics_visitors for insert
   to anon, authenticated
@@ -77,6 +79,7 @@ create policy "analytics_visitors visitor insert"
 -- resulting row must carry the caller's token, so no other customer's record
 -- can be reached — and the token itself cannot be swapped out.
 drop policy if exists "analytics_visitors public update" on public.analytics_visitors;
+drop policy if exists "analytics_visitors visitor update" on public.analytics_visitors;
 create policy "analytics_visitors visitor update"
   on public.analytics_visitors for update
   to anon, authenticated
@@ -92,6 +95,7 @@ create policy "analytics_visitors visitor update"
 -- analytics_events -----------------------------------------------------------
 -- Events may only be filed against a visitor row the caller owns.
 drop policy if exists "analytics_events public insert" on public.analytics_events;
+drop policy if exists "analytics_events visitor insert" on public.analytics_events;
 create policy "analytics_events visitor insert"
   on public.analytics_events for insert
   to anon, authenticated
