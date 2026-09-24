@@ -53,6 +53,16 @@ function isMissingRpc(error: { code?: string; message?: string }): boolean {
 }
 
 /**
+ * PostgREST answers from an in-memory schema cache and only rebuilds it when the
+ * database tells it to. A migration applied without a reload leaves new tables,
+ * relationships and functions invisible to the API, which surfaces as a
+ * "schema cache" complaint rather than anything useful.
+ */
+function isSchemaCacheError(error: { message?: string }): boolean {
+  return /schema cache/i.test(error.message ?? "");
+}
+
+/**
  * Submits the basket as a ticket.
  *
  * The preferred path is the `submit_order` Postgres function: one transaction, so
@@ -107,7 +117,20 @@ export async function submitOrder({
     .select("*, order_items(*)")
     .single();
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    // Reaching here with a schema-cache complaint means PostgREST can see
+    // neither the relationship nor submit_order — i.e. it has not reloaded since
+    // the orders migration. Handing the raw message to a customer reads like a
+    // bug in the site, so say what it actually is and what fixes it.
+    if (isSchemaCacheError(error)) {
+      throw new Error(
+        "Ordering is temporarily unavailable — please order at the counter. " +
+          "(Operator: the API schema cache is stale. Run " +
+          "`notify pgrst, 'reload schema';` in Supabase, then try again.)",
+      );
+    }
+    throw new Error(error.message);
+  }
   return data as Order;
 }
 
