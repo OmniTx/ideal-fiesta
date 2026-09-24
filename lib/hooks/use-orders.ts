@@ -12,7 +12,7 @@ import {
   updateOrderItemQuantity,
   type OrderEditInput,
 } from "@/lib/orders";
-import { subscribeToTableChanges } from "@/lib/realtime";
+import { broadcastRealtimeEvent, subscribeToTableChanges } from "@/lib/realtime";
 import {
   ORDER_STATUS_LABELS,
   type Order,
@@ -96,6 +96,8 @@ export function useOrders({ live = true }: { live?: boolean } = {}) {
 
       try {
         await updateOrder(order.id, { status });
+        // Tell any customer watching this ticket to read it back.
+        void broadcastRealtimeEvent("orders_updated");
         toast.success(
           `Ticket ${formatOrderNumber(order.order_number)} · ${ORDER_STATUS_LABELS[status].toLowerCase()}`,
         );
@@ -143,6 +145,7 @@ export function useOrders({ live = true }: { live?: boolean } = {}) {
         }
 
         await load();
+        void broadcastRealtimeEvent("orders_updated");
         toast.success(`Ticket ${formatOrderNumber(order.order_number)} updated`);
         return true;
       } catch (err) {

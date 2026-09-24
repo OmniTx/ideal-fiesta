@@ -112,13 +112,27 @@ export async function joinRewards({
 }
 
 /**
- * This device's membership, if it has one. RLS scopes the read to the row
- * carrying this browser's capability token, so at most one row comes back.
+ * This device's membership, if it has one, read by capability token.
+ *
+ * The SELECT policy on `rewards_members` compares against the request header,
+ * which the storefront's own requests cannot be relied on to carry, so this goes
+ * through `my_membership` instead.
  */
 export async function fetchMyMembership(): Promise<RewardsMember | null> {
   if (typeof window === "undefined") return null;
 
   const supabase = createClient();
+  const rpc = await supabase.rpc("my_membership", {
+    p_secret: getVisitorSecret(),
+  });
+
+  if (!rpc.error) {
+    return (rpc.data as RewardsMember | null) ?? null;
+  }
+
+  if (!isMissingFunction(rpc.error)) return null;
+
+  // Fallback for a project that has not applied 0013.
   const { data, error } = await supabase
     .from("rewards_members")
     .select("*")

@@ -6,11 +6,11 @@ import { toast } from "sonner";
 import {
   cancelOrder,
   DEFAULT_ORDERS_CONFIG,
-  fetchOrders,
+  fetchMyOrders,
   isOrderActive,
   mergeOrdersConfig,
 } from "@/lib/orders";
-import { subscribeToTableChanges } from "@/lib/realtime";
+import { subscribeToOrderSignals } from "@/lib/realtime";
 import { fetchSetting } from "@/lib/settings";
 import type { Order, OrdersConfig } from "@/lib/types/database";
 
@@ -48,7 +48,7 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
 
   const refresh = React.useCallback(async () => {
     try {
-      setOrders(await fetchOrders(20));
+      setOrders(await fetchMyOrders(20));
     } catch {
       // Non-fatal: tracking must never break the storefront.
     }
@@ -66,9 +66,12 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
       }
     })();
 
-    const unsubscribe = subscribeToTableChanges(["orders"], () => {
+    // A signal rather than Postgres Changes: an anonymous subscriber can never
+    // be authorised to receive its own order rows, so the staff side broadcasts
+    // "a ticket moved" and this device reads its own rows back by token.
+    const unsubscribe = subscribeToOrderSignals(() => {
       if (reloadTimer.current) clearTimeout(reloadTimer.current);
-      reloadTimer.current = setTimeout(() => void refresh(), 800);
+      reloadTimer.current = setTimeout(() => void refresh(), 500);
     });
 
     return () => {

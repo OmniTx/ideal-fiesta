@@ -17,7 +17,9 @@ export type RealtimeEvent =
   | "menu_updated"
   | "settings_updated"
   | "analytics_event"
-  | "lead_captured";
+  | "lead_captured"
+  /** Staff moved a ticket on. Carries no data — the customer refetches. */
+  | "orders_updated";
 
 /** Events about customer activity, which travel on the private topic only. */
 const ADMIN_EVENTS: readonly RealtimeEvent[] = [
@@ -194,6 +196,31 @@ export function subscribeToAnalytics(
   channel
     .on("broadcast", { event: "analytics_event" }, forward("analytics_event"))
     .on("broadcast", { event: "lead_captured" }, forward("lead_captured"))
+    .subscribe();
+
+  return () => {
+    void supabase.removeChannel(channel);
+  };
+}
+
+/**
+ * Tells a customer's device that a ticket moved, so it can refetch its own rows.
+ *
+ * This is a broadcast rather than Postgres Changes on `orders` on purpose: a
+ * customer's SELECT policy is scoped by capability token, so an anonymous
+ * subscriber can never be authorised to receive its own row's changes. The
+ * signal carries no data at all — the device reads back through `my_orders`.
+ */
+export function subscribeToOrderSignals(onSignal: () => void): () => void {
+  if (typeof window === "undefined") return () => {};
+
+  const supabase = createClient();
+  const channel = supabase.channel(REALTIME_CHANNEL, {
+    config: { private: true },
+  });
+
+  channel
+    .on("broadcast", { event: "orders_updated" }, () => onSignal())
     .subscribe();
 
   return () => {

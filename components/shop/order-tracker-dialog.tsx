@@ -12,7 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { canCancelOrder } from "@/lib/orders";
+import { canCancelOrder, customerStatusLabel, formatOrderNumber } from "@/lib/orders";
 
 /**
  * The device's ticket. Falls back to the most recent one when nothing is active,
@@ -39,17 +39,29 @@ export function OrderTrackerDialog() {
     >
       <DialogContent className="max-w-md overflow-hidden p-0">
         {order ? (
-          <OrderTicket
-            order={order}
-            counterMessage={ordersConfig.counter_message}
-            canCancel={canCancelOrder(
-              order,
-              ordersConfig.cancel_window_minutes,
-            )}
-            isCancelling={isCancelling}
-            onCancel={() => void cancelActiveOrder()}
-            onDone={closeTracker}
-          />
+          <>
+            {/* The ticket is mostly numbers and labels, so there is no visible
+                heading to hand Radix — it still needs one, and a description,
+                to announce the dialog properly. */}
+            <DialogTitle className="sr-only">
+              Your order {formatOrderNumber(order.order_number)}
+            </DialogTitle>
+            <DialogDescription className="sr-only">
+              {customerStatusLabel(order.status)}. Show this number at the
+              counter to pay.
+            </DialogDescription>
+            <OrderTicket
+              order={order}
+              counterMessage={ordersConfig.counter_message}
+              canCancel={canCancelOrder(
+                order,
+                ordersConfig.cancel_window_minutes,
+              )}
+              isCancelling={isCancelling}
+              onCancel={() => void cancelActiveOrder()}
+              onDone={closeTracker}
+            />
+          </>
         ) : (
           <>
             <DialogHeader className="p-6 pb-0">

@@ -176,6 +176,41 @@ export async function submitOrder({
 }
 
 /**
+ * This device's tickets, read by capability token rather than by the SELECT
+ * policy.
+ *
+ * `orders visitor read own` compares against the request header, which the
+ * storefront's own requests cannot be relied on to carry — the same reason the
+ * write path moved off it in 0011. Reading through `my_orders` also means a
+ * customer can see their ticket move, which the policy-based read never allowed.
+ */
+export async function fetchMyOrders(limit = 20): Promise<Order[]> {
+  if (typeof window === "undefined") return [];
+
+  const supabase = createClient();
+  const rpc = await supabase.rpc("my_orders", {
+    p_secret: getVisitorSecret(),
+    p_limit: limit,
+  });
+
+  if (!rpc.error) {
+    const rows = rpc.data as Order[] | null;
+    return Array.isArray(rows) ? rows : [];
+  }
+
+  if (!isMissingFunction(rpc.error)) return [];
+
+  // Fallback for a project that has not applied 0013.
+  const { data } = await supabase
+    .from("orders")
+    .select("*, order_items(*)")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  return (data ?? []) as Order[];
+}
+
+/**
  * Tickets, newest first. The same query serves the storefront and the admin
  * board — RLS decides the scope: an admin sees today's board, an anonymous
  * browser only ever sees the tickets this device submitted.
