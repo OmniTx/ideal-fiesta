@@ -3,6 +3,7 @@ import { createClient } from "@/utils/supabase/client";
 import type { CartLine } from "@/lib/cart";
 import type {
   Order,
+  OrderItem,
   OrdersConfig,
   OrderStatus,
 } from "@/lib/types/database";
@@ -31,13 +32,38 @@ export interface SubmitOrderInput {
   note?: string;
 }
 
+function toItemPayload(lines: CartLine[]) {
+  return lines.map((line) => ({
+    menu_item_id: line.menuItemId,
+    name: line.name,
+    category: line.category,
+    size: line.size,
+    modifiers: line.modifiers,
+    unit_price: line.unitPrice,
+    quantity: line.quantity,
+  }));
+}
+
+/** PostgREST's "no such function", for a project where 0009 isn't applied yet. */
+function isMissingRpc(error: { code?: string; message?: string }): boolean {
+  return (
+    error.code === "PGRST202" ||
+    /could not find the function|does not exist/i.test(error.message ?? "")
+  );
+}
+
 /**
  * Submits the basket as a ticket.
  *
- * The order and its lines go up in ONE nested insert, so they land in a single
- * transaction and an orphan ticket with no items cannot exist. `order_number`,
- * `order_day` and every total are assigned by Postgres triggers — nothing the
- * browser could get wrong or forge is trusted.
+ * The preferred path is the `submit_order` Postgres function: one transaction, so
+ * an orphan ticket cannot exist, and the call does not depend on PostgREST
+ * resolving the orders -> order_items relationship from its schema cache (which
+ * is what broke the old nested insert). `order_number`, `order_day` and every
+ * total are still assigned by triggers — nothing the browser sends is trusted.
+ *
+ * The nested insert is kept as a fallback only when that function is genuinely
+ * absent, so a project that hasn't applied 0009 keeps working. Any other failure
+ * is surfaced instead of being masked by a second attempt.
  */
 export async function submitOrder({
   lines,
@@ -52,21 +78,31 @@ export async function submitOrder({
   }
 
   const supabase = createClient();
+  const items = toItemPayload(lines);
+
+  const rpc = await supabase.rpc("submit_order", {
+    p_items: items,
+    p_customer_name: customerName?.trim() || null,
+    p_note: note?.trim() || null,
+  });
+
+  if (!rpc.error) {
+    const payload = rpc.data as { order?: Order; items?: OrderItem[] } | null;
+    if (!payload?.order) throw new Error("The ticket was not created.");
+    return { ...payload.order, order_items: payload.items ?? [] };
+  }
+
+  if (!isMissingRpc(rpc.error)) {
+    throw new Error(rpc.error.message);
+  }
+
   const { data, error } = await supabase
     .from("orders")
     .insert({
       visitor_secret: getVisitorSecret(),
       customer_name: customerName?.trim() || null,
       note: note?.trim() || null,
-      order_items: lines.map((line) => ({
-        menu_item_id: line.menuItemId,
-        name: line.name,
-        category: line.category,
-        size: line.size,
-        modifiers: line.modifiers,
-        unit_price: line.unitPrice,
-        quantity: line.quantity,
-      })),
+      order_items: items,
     })
     .select("*, order_items(*)")
     .single();
