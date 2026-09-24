@@ -14,7 +14,7 @@ import type { OrdersConfig } from "@/lib/types/database";
  * shared, so the board just uses the full content width and large type.
  */
 export default function AdminOrdersBoardPage() {
-  const { orders, pendingIds, updateStatus } = useOrders();
+  const { orders, pendingIds, updateStatus, lastLoadedAt } = useOrders();
   const [config, setConfig] = React.useState<OrdersConfig | null>(null);
 
   React.useEffect(() => {
@@ -39,6 +39,7 @@ export default function AdminOrdersBoardPage() {
         pendingIds={pendingIds}
         onStatusChange={(order, status) => void updateStatus(order, status)}
         title={config?.board_title ?? "Today's tickets"}
+        lastLoadedAt={lastLoadedAt}
       />
     </div>
   );

@@ -12,6 +12,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { fetchSetting, saveSetting } from "@/lib/settings";
+import { subscribeToSettingsChanges } from "@/lib/realtime";
 import { DEFAULT_THEME, mergeWithDefaultTheme } from "@/lib/theme";
 import type { ThemeSettings } from "@/lib/types/database";
 
@@ -22,7 +23,7 @@ export default function AdminThemePage() {
   React.useEffect(() => {
     let isActive = true;
 
-    (async () => {
+    const load = async () => {
       try {
         const saved = await fetchSetting<Partial<ThemeSettings>>("theme");
         if (isActive) setTheme(mergeWithDefaultTheme(saved));
@@ -33,10 +34,18 @@ export default function AdminThemePage() {
         );
         setTheme(DEFAULT_THEME);
       }
-    })();
+    };
+
+    void load();
+
+    // Another admin saving a palette should land here without a reload.
+    const unsubscribe = subscribeToSettingsChanges((key) => {
+      if (!key || key === "theme") void load();
+    });
 
     return () => {
       isActive = false;
+      unsubscribe();
     };
   }, []);
 

@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/utils/supabase/client";
-import { subscribeToAnalytics } from "@/lib/realtime";
+import { subscribeToAnalytics, subscribeToTableChanges } from "@/lib/realtime";
 import { isVisitorLive } from "@/lib/presence";
 import { fetchRewardsMembers, formatPhone } from "@/lib/rewards";
 import type {
@@ -76,22 +76,36 @@ export default function AdminAnalyticsPage() {
   React.useEffect(() => {
     void loadData();
 
+    const scheduleReload = () => {
+      if (reloadTimer.current) clearTimeout(reloadTimer.current);
+      reloadTimer.current = setTimeout(() => void loadData(), 1500);
+    };
+
     // Signals from the private admin topic are opaque pings, never customer
     // data: read the rows back through RLS and coalesce bursts into one query.
-    const unsubscribe = subscribeToAnalytics(({ event }) => {
+    const unsubscribeSignals = subscribeToAnalytics(({ event }) => {
       if (event === "lead_captured") {
         toast.info("New Foundry Rewards member", { duration: 4000 });
       }
-
-      if (reloadTimer.current) clearTimeout(reloadTimer.current);
-      reloadTimer.current = setTimeout(() => {
-        void loadData();
-      }, 1500);
+      scheduleReload();
     });
+
+    // The dashboard's own tables, live. Heartbeats and leave markers land here,
+    // so "on the storefront now" moves on its own rather than only when a
+    // visitor happens to load another page.
+    const unsubscribeTables = subscribeToTableChanges(
+      ["analytics_visitors", "analytics_events", "rewards_members"],
+      scheduleReload,
+    );
+
+    // Safety net if the socket drops.
+    const poll = setInterval(() => void loadData(), 60_000);
 
     return () => {
       if (reloadTimer.current) clearTimeout(reloadTimer.current);
-      unsubscribe();
+      clearInterval(poll);
+      unsubscribeSignals();
+      unsubscribeTables();
     };
   }, [loadData]);
 

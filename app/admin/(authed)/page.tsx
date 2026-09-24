@@ -28,6 +28,7 @@ import { useRewards } from "@/lib/hooks/use-rewards";
 import { formatAUD } from "@/lib/money";
 import { formatOrderNumber } from "@/lib/orders";
 import { liveSinceIso } from "@/lib/presence";
+import { subscribeToTableChanges } from "@/lib/realtime";
 import { formatVenueTime, venueDateString } from "@/lib/time";
 import { createClient } from "@/utils/supabase/client";
 
@@ -39,6 +40,22 @@ export default function AdminOverviewPage() {
   const supabase = React.useMemo(() => createClient(), []);
   const [liveVisitors, setLiveVisitors] = React.useState<number | null>(null);
   const [dateLabel, setDateLabel] = React.useState("");
+  const liveTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const countLive = React.useCallback(async () => {
+    const since = liveSinceIso();
+
+    // Seen recently AND not reported gone since. `left_at` is what makes this
+    // drop the moment someone closes the tab, rather than at the end of a
+    // timeout window.
+    const { count } = await supabase
+      .from("analytics_visitors")
+      .select("visitor_id", { count: "exact", head: true })
+      .gte("last_seen", since)
+      .or(`left_at.is.null,left_at.lte.${since}`);
+
+    setLiveVisitors(count ?? 0);
+  }, [supabase]);
 
   // Both of these depend on "now", which differs between the prerender and the
   // browser — so they are only filled in after mount to avoid a mismatch.
@@ -53,25 +70,24 @@ export default function AdminOverviewPage() {
   }, []);
 
   React.useEffect(() => {
-    let isActive = true;
-    const since = liveSinceIso();
+    void countLive();
 
-    void (async () => {
-      // Seen recently AND not reported gone since. `left_at` is what makes this
-      // drop the moment someone closes the tab, rather than at the end of a
-      // timeout window.
-      const { count } = await supabase
-        .from("analytics_visitors")
-        .select("visitor_id", { count: "exact", head: true })
-        .gte("last_seen", since)
-        .or(`left_at.is.null,left_at.lte.${since}`);
-      if (isActive) setLiveVisitors(count ?? 0);
-    })();
+    // Arriving, heartbeating and leaving are all row writes, so this keeps the
+    // count honest without anyone pressing refresh.
+    const unsubscribe = subscribeToTableChanges(["analytics_visitors"], () => {
+      if (liveTimer.current) clearTimeout(liveTimer.current);
+      liveTimer.current = setTimeout(() => void countLive(), 1500);
+    });
+
+    // Safety net if the socket drops.
+    const poll = setInterval(() => void countLive(), 60_000);
 
     return () => {
-      isActive = false;
+      if (liveTimer.current) clearTimeout(liveTimer.current);
+      clearInterval(poll);
+      unsubscribe();
     };
-  }, [supabase]);
+  }, [countLive]);
 
   const today = venueDateString();
   const todayOrders = orders.filter(

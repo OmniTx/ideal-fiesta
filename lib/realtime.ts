@@ -255,7 +255,16 @@ export function subscribeToTableChanges(
     );
   });
 
-  channel.subscribe();
+  // Without a status callback a rejected join is completely silent: the page
+  // simply stops updating and it reads like a data problem rather than a
+  // connection one.
+  channel.subscribe((status) => {
+    if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+      console.warn(
+        `[Realtime] subscription to ${tables.join(", ")} failed: ${status}`,
+      );
+    }
+  });
 
   return () => {
     void supabase.removeChannel(channel);

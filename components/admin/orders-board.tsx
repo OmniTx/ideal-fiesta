@@ -21,6 +21,8 @@ interface OrdersBoardProps {
   pendingIds: string[];
   onStatusChange: (order: Order, status: OrderStatus) => void;
   title: string;
+  /** When the board last read from the database, so staff can trust it. */
+  lastLoadedAt: number | null;
 }
 
 function itemLine(item: OrderItem): string {
@@ -50,6 +52,7 @@ export function OrdersBoard({
   pendingIds,
   onStatusChange,
   title,
+  lastLoadedAt,
 }: OrdersBoardProps) {
   const audioRef = React.useRef<AudioContext | null>(null);
   const knownIdsRef = React.useRef<Set<string> | null>(null);
@@ -104,6 +107,9 @@ export function OrdersBoard({
   }, [orders, soundOn, chime]);
 
   const openTickets = orders.filter((order) => isOrderActive(order.status));
+  // The poll runs every 30s, so anything older than 90s means the board has
+  // stopped talking to the database and should say so rather than look fine.
+  const isStale = lastLoadedAt === null || Date.now() - lastLoadedAt > 90_000;
   const justServed = orders
     .filter((order) => order.status === "served")
     .slice(0, 6);
@@ -115,12 +121,23 @@ export function OrdersBoard({
           <h1 className="font-display text-2xl font-bold tracking-tight">
             {title}
           </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {openTickets.length} open ·{" "}
-            {formatVenueTime(new Date(), {
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
+          <p className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
+            <span
+              className={`h-2 w-2 rounded-full ${
+                isStale ? "bg-amber-500" : "bg-emerald-500"
+              }`}
+              aria-hidden="true"
+            />
+            <span>
+              {openTickets.length} open · updated{" "}
+              {lastLoadedAt
+                ? formatVenueTime(new Date(lastLoadedAt), {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    second: "2-digit",
+                  })
+                : "—"}
+            </span>
           </p>
         </div>
 

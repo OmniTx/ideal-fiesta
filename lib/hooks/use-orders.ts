@@ -39,6 +39,7 @@ export function useOrders({ live = true }: { live?: boolean } = {}) {
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [pendingIds, setPendingIds] = React.useState<string[]>([]);
+  const [lastLoadedAt, setLastLoadedAt] = React.useState<number | null>(null);
 
   const ordersRef = React.useRef<Order[]>([]);
   const reloadTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -52,6 +53,7 @@ export function useOrders({ live = true }: { live?: boolean } = {}) {
       const rows = await fetchOrders();
       setOrders(rows);
       setError(null);
+      setLastLoadedAt(Date.now());
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not load tickets");
     } finally {
@@ -75,6 +77,15 @@ export function useOrders({ live = true }: { live?: boolean } = {}) {
       if (reloadTimer.current) clearTimeout(reloadTimer.current);
       unsubscribe();
     };
+  }, [load, live]);
+
+  // Safety net for the bench board. If the socket drops — a tablet that slept, a
+  // flaky connection, a rejected join — the board must not sit there looking
+  // current while tickets pile up.
+  React.useEffect(() => {
+    if (!live) return;
+    const poll = setInterval(() => void load(), 30_000);
+    return () => clearInterval(poll);
   }, [load, live]);
 
   const updateStatus = React.useCallback(
@@ -183,6 +194,7 @@ export function useOrders({ live = true }: { live?: boolean } = {}) {
     isLoading,
     error,
     pendingIds,
+    lastLoadedAt,
     reload: load,
     updateStatus,
     saveTicket,
