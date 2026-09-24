@@ -138,6 +138,89 @@ export interface AnalyticsEvent {
   created_at: string;
 }
 
+/* -------------------------------------------------------------------------- */
+/* Foundry Rewards                                                             */
+/* -------------------------------------------------------------------------- */
+
+export interface RewardsMember {
+  id: string;
+  /** Short, counter-friendly code the member shows to redeem the perk. */
+  member_code: string;
+  first_name: string;
+  phone: string;
+  /** Capability token this browser proves via the x-visitor-secret header. */
+  visitor_secret?: string | null;
+  perk_percent: number;
+  perk_used_at: string | null;
+  first_seen: string;
+  last_seen: string;
+  source: string | null;
+}
+
+export interface RewardsConfig {
+  enabled: boolean;
+  headline: string;
+  offer: string;
+  perk_percent: number;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Counter order tickets                                                       */
+/* -------------------------------------------------------------------------- */
+
+export const ORDER_STATUS_VALUES = ["new", "served", "void"] as const;
+
+export type OrderStatus = (typeof ORDER_STATUS_VALUES)[number];
+
+export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
+  new: "New",
+  served: "Served",
+  void: "Void",
+};
+
+export interface OrderModifier {
+  label: string;
+  price: number;
+}
+
+export interface OrderItem {
+  id: string;
+  order_id: string;
+  menu_item_id: string | null;
+  name: string;
+  category: MenuCategory | null;
+  size: string | null;
+  modifiers: OrderModifier[];
+  unit_price: number;
+  quantity: number;
+  line_total: number;
+  created_at: string;
+}
+
+export interface Order {
+  id: string;
+  /** Venue-local (Australia/Brisbane) day the ticket belongs to. */
+  order_day: string;
+  order_number: number;
+  /** Capability token this browser proves via the x-visitor-secret header. */
+  visitor_secret?: string | null;
+  customer_name: string | null;
+  status: OrderStatus;
+  note: string | null;
+  item_count: number;
+  subtotal: number;
+  created_at: string;
+  served_at: string | null;
+  /** Present when the row was read with an embedded order_items select. */
+  order_items?: OrderItem[];
+}
+
+export interface OrdersConfig {
+  enabled: boolean;
+  counter_message: string;
+  board_title: string;
+}
+
 /**
  * Hand-authored mirror of the generated Supabase types. The app deliberately
  * does not parameterise its clients with this to keep inference predictable —
@@ -165,6 +248,29 @@ export interface Database {
         Row: AnalyticsEvent;
         Insert: Omit<AnalyticsEvent, "id" | "created_at">;
         Update: Partial<AnalyticsEvent>;
+      };
+      rewards_members: {
+        Row: RewardsMember;
+        Insert: Partial<RewardsMember> & {
+          first_name: string;
+          phone: string;
+          visitor_secret: string;
+        };
+        Update: Partial<RewardsMember>;
+      };
+      orders: {
+        Row: Order;
+        Insert: Partial<Order> & { visitor_secret: string };
+        Update: Partial<Order>;
+      };
+      order_items: {
+        Row: OrderItem;
+        Insert: Partial<OrderItem> & {
+          order_id: string;
+          name: string;
+          unit_price: number;
+        };
+        Update: Partial<OrderItem>;
       };
     };
     Views: Record<string, never>;

@@ -73,6 +73,15 @@ export function venueParts(date: Date = new Date()): VenueParts {
   };
 }
 
+/**
+ * The venue's calendar day as `YYYY-MM-DD`, matching how Postgres `date` columns
+ * arrive over PostgREST — used to bucket order tickets by trading day.
+ */
+export function venueDateString(date: Date = new Date()): string {
+  const { year, month, day } = venueParts(date);
+  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
 export function isWeekendAtVenue(date: Date = new Date()): boolean {
   const { weekday } = venueParts(date);
   return weekday === 0 || weekday === 6;

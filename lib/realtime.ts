@@ -200,3 +200,37 @@ export function subscribeToAnalytics(
     void supabase.removeChannel(channel);
   };
 }
+
+/**
+ * Live table watcher for the admin panel (order tickets, rewards members).
+ *
+ * Uses Postgres Changes on the public topic, which respects table RLS: a signed
+ * in admin receives every row, while an anonymous storefront browser only ever
+ * receives its own. Nothing customer-identifying travels over the channel, so
+ * this keeps the no-PII-on-broadcast rule intact.
+ */
+export function subscribeToTableChanges(
+  tables: readonly string[],
+  onChange: () => void,
+): () => void {
+  if (typeof window === "undefined") return () => {};
+
+  const supabase = createClient();
+  const channel = supabase.channel(REALTIME_CHANNEL, {
+    config: { private: true },
+  });
+
+  tables.forEach((table) => {
+    channel.on(
+      "postgres_changes",
+      { event: "*", schema: "public", table },
+      () => onChange(),
+    );
+  });
+
+  channel.subscribe();
+
+  return () => {
+    void supabase.removeChannel(channel);
+  };
+}
