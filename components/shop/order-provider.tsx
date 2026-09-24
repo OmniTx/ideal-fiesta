@@ -85,6 +85,19 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
     [orders],
   );
 
+  const hasActiveOrder = Boolean(activeOrder);
+
+  // The phone is the one that must not need a refresh. A broadcast can be
+  // missed, so while a ticket is in flight also poll: it is one small RPC, and
+  // the worst case becomes fifteen seconds rather than "until you reload".
+  // Keyed on a boolean, not the order object, so refetching cannot restart the
+  // interval before it ever fires.
+  React.useEffect(() => {
+    if (!hasActiveOrder) return;
+    const poll = setInterval(() => void refresh(), 15_000);
+    return () => clearInterval(poll);
+  }, [hasActiveOrder, refresh]);
+
   const adoptOrder = React.useCallback((order: Order) => {
     setOrders((current) => [order, ...current.filter((row) => row.id !== order.id)]);
   }, []);

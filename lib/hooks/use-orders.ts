@@ -84,7 +84,7 @@ export function useOrders({ live = true }: { live?: boolean } = {}) {
   // current while tickets pile up.
   React.useEffect(() => {
     if (!live) return;
-    const poll = setInterval(() => void load(), 30_000);
+    const poll = setInterval(() => void load(), 15_000);
     return () => clearInterval(poll);
   }, [load, live]);
 

@@ -50,14 +50,30 @@ export async function broadcastRealtimeEvent(
   });
 
   try {
-    await new Promise<void>((resolve) => {
-      channel.subscribe((status) => {
-        if (status === "SUBSCRIBED" || status === "TIMED_OUT" || status === "CHANNEL_ERROR") {
-          resolve();
+    // Wait for the join rather than racing it. The old version resolved after
+    // 600ms regardless, which on a cold socket — the first broadcast of a
+    // session, which has to open the websocket and authorise the channel — sent
+    // into a channel that was not subscribed yet.
+    const status = await new Promise<string>((resolve) => {
+      const timer = setTimeout(() => resolve("TIMEOUT"), 5000);
+      channel.subscribe((next) => {
+        if (
+          next === "SUBSCRIBED" ||
+          next === "CHANNEL_ERROR" ||
+          next === "TIMED_OUT"
+        ) {
+          clearTimeout(timer);
+          resolve(next);
         }
       });
-      setTimeout(resolve, 600);
     });
+
+    if (status !== "SUBSCRIBED") {
+      // Say it out loud. A rejected join means nothing was published, and
+      // silently returning makes realtime look merely quiet.
+      console.warn(`[Realtime] could not publish "${event}": ${status}`);
+      return;
+    }
 
     await channel.send({
       type: "broadcast",

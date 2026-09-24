@@ -107,9 +107,9 @@ export function OrdersBoard({
   }, [orders, soundOn, chime]);
 
   const openTickets = orders.filter((order) => isOrderActive(order.status));
-  // The poll runs every 30s, so anything older than 90s means the board has
+  // The poll runs every 15s, so anything older than 45s means the board has
   // stopped talking to the database and should say so rather than look fine.
-  const isStale = lastLoadedAt === null || Date.now() - lastLoadedAt > 90_000;
+  const isStale = lastLoadedAt === null || Date.now() - lastLoadedAt > 45_000;
   const justServed = orders
     .filter((order) => order.status === "served")
     .slice(0, 6);

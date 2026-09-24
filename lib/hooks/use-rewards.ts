@@ -52,6 +52,14 @@ export function useRewards({ live = true }: { live?: boolean } = {}) {
     };
   }, [load, live]);
 
+  // Same safety net as the order board: a member joining should appear without
+  // anyone pressing refresh, even if the socket is down.
+  React.useEffect(() => {
+    if (!live) return;
+    const poll = setInterval(() => void load(), 60_000);
+    return () => clearInterval(poll);
+  }, [load, live]);
+
   const togglePerk = React.useCallback(
     async (member: RewardsMember, used: boolean): Promise<boolean> => {
       const snapshot = membersRef.current;
