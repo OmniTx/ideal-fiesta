@@ -5,7 +5,6 @@ import {
   Users,
   Smartphone,
   Phone,
-  Mail,
   Download,
   Search,
   RefreshCw,
@@ -13,15 +12,29 @@ import {
   Laptop,
   Tablet,
   Activity,
+  Gift,
 } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/utils/supabase/client";
 import { subscribeToAnalytics } from "@/lib/realtime";
-import type { AnalyticsVisitor, AnalyticsEvent } from "@/lib/types/database";
+import { fetchRewardsMembers, formatPhone } from "@/lib/rewards";
+import type {
+  AnalyticsVisitor,
+  AnalyticsEvent,
+  RewardsMember,
+} from "@/lib/types/database";
+
+/** A rewards member enriched with the telemetry row for the same device. */
+interface LeadRow {
+  member: RewardsMember;
+  visitor: AnalyticsVisitor | null;
+  visits: number;
+}
 
 export default function AdminAnalyticsPage() {
   const [visitors, setVisitors] = React.useState<AnalyticsVisitor[]>([]);
   const [events, setEvents] = React.useState<AnalyticsEvent[]>([]);
+  const [members, setMembers] = React.useState<RewardsMember[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [searchQuery, setSearchQuery] = React.useState("");
   const [activeTab, setActiveTab] = React.useState<"visitors" | "leads" | "items">("visitors");
@@ -29,11 +42,11 @@ export default function AdminAnalyticsPage() {
   const supabase = React.useMemo(() => createClient(), []);
   const reloadTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Fetch telemetry from the dedicated analytics tables. Anonymous visitors
-  // write directly via RLS, so data lands even when no admin is online.
+  // Fetch telemetry from the analytics tables. Anonymous visitors write directly
+  // via RLS, so data lands even when no admin is online.
   const loadData = React.useCallback(async () => {
     try {
-      const [visitorsRes, eventsRes] = await Promise.all([
+      const [visitorsRes, eventsRes, memberRows] = await Promise.all([
         supabase
           .from("analytics_visitors")
           .select("*")
@@ -44,10 +57,14 @@ export default function AdminAnalyticsPage() {
           .select("*")
           .order("created_at", { ascending: false })
           .limit(300),
+        // Customer contact details live in rewards_members now —
+        // analytics_visitors is telemetry only and never holds a name or phone.
+        fetchRewardsMembers().catch(() => [] as RewardsMember[]),
       ]);
 
       setVisitors((visitorsRes.data ?? []) as AnalyticsVisitor[]);
       setEvents((eventsRes.data ?? []) as AnalyticsEvent[]);
+      setMembers(memberRows);
     } catch {
       // Non-fatal
     } finally {
@@ -62,7 +79,7 @@ export default function AdminAnalyticsPage() {
     // data: read the rows back through RLS and coalesce bursts into one query.
     const unsubscribe = subscribeToAnalytics(({ event }) => {
       if (event === "lead_captured") {
-        toast.info("New customer lead captured", { duration: 4000 });
+        toast.info("New Foundry Rewards member", { duration: 4000 });
       }
 
       if (reloadTimer.current) clearTimeout(reloadTimer.current);
@@ -92,9 +109,35 @@ export default function AdminAnalyticsPage() {
     }
   });
 
-  const identifiedLeads = visitors.filter(
-    (v) => Boolean(v.name || v.phone || v.email),
+  // Members and their device telemetry share a capability token, so a member can
+  // be matched back to the device row that produced their visit history.
+  const visitorBySecret = React.useMemo(() => {
+    const map = new Map<string, AnalyticsVisitor>();
+    visitors.forEach((visitor) => {
+      if (visitor.visitor_secret) map.set(visitor.visitor_secret, visitor);
+    });
+    return map;
+  }, [visitors]);
+
+  const leads = React.useMemo<LeadRow[]>(
+    () =>
+      members.map((member) => {
+        const visitor = member.visitor_secret
+          ? visitorBySecret.get(member.visitor_secret) ?? null
+          : null;
+        return {
+          member,
+          visitor,
+          visits:
+            (visitor ? visitsByVisitor[visitor.visitor_id] : undefined) ??
+            visitor?.total_visits ??
+            1,
+        };
+      }),
+    [members, visitorBySecret, visitsByVisitor],
   );
+
+  const perksUnused = members.filter((member) => !member.perk_used_at).length;
 
   const mobileCount = visitors.filter(
     (v) => v.device_type === "mobile" || v.device_type === "tablet",
@@ -121,15 +164,15 @@ export default function AdminAnalyticsPage() {
     .map(([name, data]) => ({ name, ...data }))
     .sort((a, b) => b.count - a.count);
 
-  // Filtered leads
-  const filteredLeads = identifiedLeads.filter((lead) => {
+  // Filtered members
+  const filteredLeads = leads.filter(({ member, visitor }) => {
     const q = searchQuery.toLowerCase();
     return (
-      (lead.name && lead.name.toLowerCase().includes(q)) ||
-      (lead.phone && lead.phone.toLowerCase().includes(q)) ||
-      (lead.email && lead.email.toLowerCase().includes(q)) ||
-      (lead.device_model && lead.device_model.toLowerCase().includes(q)) ||
-      (lead.last_ip && lead.last_ip.includes(q))
+      member.first_name.toLowerCase().includes(q) ||
+      member.phone.includes(q) ||
+      member.member_code.toLowerCase().includes(q) ||
+      (visitor?.city?.toLowerCase().includes(q) ?? false) ||
+      (visitor?.last_ip?.includes(q) ?? false)
     );
   });
 
@@ -147,18 +190,18 @@ export default function AdminAnalyticsPage() {
 
   // Export CSV
   const exportCsv = () => {
-    if (identifiedLeads.length === 0) {
-      toast.info("No identified leads to export yet.");
+    if (filteredLeads.length === 0) {
+      toast.info("No rewards members to export yet.");
       return;
     }
 
     const headers = [
-      "Name",
-      "Phone",
-      "Email",
-      "First Seen",
-      "Last Seen",
-      "Total Visits",
+      "Member Code",
+      "First Name",
+      "Mobile",
+      "Joined",
+      "Perk Redeemed At",
+      "Visits",
       "Device Model",
       "Device Type",
       "IP Address",
@@ -166,29 +209,34 @@ export default function AdminAnalyticsPage() {
       "Country",
     ];
 
-    const rows = identifiedLeads.map((l) => [
-      `"${(l.name || "").replace(/"/g, '""')}"`,
-      `"${(l.phone || "").replace(/"/g, '""')}"`,
-      `"${(l.email || "").replace(/"/g, '""')}"`,
-      `"${l.first_seen}"`,
-      `"${l.last_seen}"`,
-      visitsByVisitor[l.visitor_id] ?? l.total_visits ?? 1,
-      `"${(l.device_model || "").replace(/"/g, '""')}"`,
-      `"${l.device_type}"`,
-      `"${l.last_ip || ""}"`,
-      `"${l.city || ""}"`,
-      `"${l.country || ""}"`,
+    const rows = filteredLeads.map(({ member, visitor, visits }) => [
+      `"${member.member_code}"`,
+      `"${member.first_name.replace(/"/g, '""')}"`,
+      `"${formatPhone(member.phone)}"`,
+      `"${member.first_seen}"`,
+      `"${member.perk_used_at ?? ""}"`,
+      visits,
+      `"${(visitor?.device_model || "").replace(/"/g, '""')}"`,
+      `"${visitor?.device_type || ""}"`,
+      `"${visitor?.last_ip || ""}"`,
+      `"${visitor?.city || ""}"`,
+      `"${visitor?.country || ""}"`,
     ]);
 
-    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+    const csvContent =
+      "data:text/csv;charset=utf-8," +
+      [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `foundry_leads_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.setAttribute(
+      "download",
+      `foundry_rewards_${new Date().toISOString().slice(0, 10)}.csv`,
+    );
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    toast.success(`Exported ${identifiedLeads.length} leads to CSV.`);
+    toast.success(`Exported ${filteredLeads.length} members to CSV.`);
   };
 
   return (
@@ -197,10 +245,11 @@ export default function AdminAnalyticsPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="font-display text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-            Live Analytics & Leads
+            Live Analytics & Rewards
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Real-time visitor telemetry, device intelligence, and captured customer contacts.
+            Real-time visitor telemetry, device intelligence, and Foundry Rewards
+            members.
           </p>
         </div>
 
@@ -220,7 +269,7 @@ export default function AdminAnalyticsPage() {
           <button
             type="button"
             onClick={exportCsv}
-            disabled={identifiedLeads.length === 0}
+            disabled={filteredLeads.length === 0}
             className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-xs font-semibold text-primary-foreground transition hover:opacity-90 disabled:opacity-50"
           >
             <Download className="h-3.5 w-3.5" />
@@ -251,17 +300,19 @@ export default function AdminAnalyticsPage() {
           </div>
         </div>
 
-        {/* Card 2: Captured Customer Leads */}
+        {/* Card 2: Rewards Members */}
         <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
           <div className="flex items-center justify-between text-muted-foreground">
-            <span className="text-xs font-medium">Identified Leads</span>
-            <Phone className="h-4 w-4 text-primary" />
+            <span className="text-xs font-medium">Rewards Members</span>
+            <Gift className="h-4 w-4 text-primary" />
           </div>
           <div className="mt-3 flex items-baseline gap-2">
             <span className="font-display text-3xl font-bold tracking-tight text-primary">
-              {identifiedLeads.length}
+              {members.length}
             </span>
-            <span className="text-xs text-muted-foreground">with Name/Phone/Email</span>
+            <span className="text-xs text-muted-foreground">
+              {perksUnused} perk unused
+            </span>
           </div>
         </div>
 
@@ -297,7 +348,7 @@ export default function AdminAnalyticsPage() {
       </div>
 
       {/* Tabs & Search Bar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-border pb-3">
+      <div className="flex flex-col gap-3 border-b border-border pb-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-1 overflow-x-auto">
           <button
             type="button"
@@ -308,8 +359,8 @@ export default function AdminAnalyticsPage() {
                 : "text-muted-foreground hover:bg-muted hover:text-foreground"
             }`}
           >
-            <Phone className="h-3.5 w-3.5" />
-            <span>Identified Leads ({identifiedLeads.length})</span>
+            <Gift className="h-3.5 w-3.5" />
+            <span>Rewards Members ({leads.length})</span>
           </button>
 
           <button
@@ -344,7 +395,7 @@ export default function AdminAnalyticsPage() {
           <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
           <input
             type="text"
-            placeholder="Search leads, IP, phone..."
+            placeholder="Search members, name, IP…"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full rounded-lg border border-border bg-card py-1.5 pl-8 pr-3 text-xs placeholder:text-muted-foreground focus:border-primary focus:outline-none"
@@ -352,99 +403,89 @@ export default function AdminAnalyticsPage() {
         </div>
       </div>
 
-      {/* TAB CONTENT 1: IDENTIFIED LEADS */}
+      {/* TAB CONTENT 1: REWARDS MEMBERS */}
       {activeTab === "leads" && (
         <div className="rounded-xl border border-border bg-card shadow-sm">
           {filteredLeads.length === 0 ? (
             <div className="p-12 text-center">
-              <Phone className="mx-auto h-8 w-8 text-muted-foreground/50" />
-              <p className="mt-3 text-sm font-semibold">No identified leads yet</p>
+              <Gift className="mx-auto h-8 w-8 text-muted-foreground/50" />
+              <p className="mt-3 text-sm font-semibold">No rewards members yet</p>
               <p className="mt-1 text-xs text-muted-foreground">
-                When customers submit the regulars form or VIP club on the menu, their name, phone, email, and phone device info will appear here.
+                When customers join Foundry Rewards on the storefront, their
+                first name, mobile, member code and perk status appear here.
               </p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
-                <thead className="border-b border-border bg-muted/40 font-semibold text-muted-foreground uppercase">
+                <thead className="border-b border-border bg-muted/40 font-semibold uppercase text-muted-foreground">
                   <tr>
-                    <th className="px-4 py-3">Customer</th>
-                    <th className="px-4 py-3">Phone & Email</th>
-                    <th className="px-4 py-3">Device / Phone</th>
+                    <th className="px-4 py-3">Member</th>
+                    <th className="px-4 py-3">Mobile</th>
+                    <th className="px-4 py-3">Device</th>
                     <th className="px-4 py-3">IP & Location</th>
-                    <th className="px-4 py-3">Last Seen</th>
-                    <th className="px-4 py-3 text-right">Visits</th>
+                    <th className="px-4 py-3">Joined</th>
+                    <th className="px-4 py-3 text-right">Perk</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {filteredLeads.map((lead) => (
-                    <tr key={lead.visitor_id} className="transition hover:bg-muted/30">
-                      {/* Customer Name */}
+                  {filteredLeads.map(({ member, visitor, visits }) => (
+                    <tr key={member.id} className="transition hover:bg-muted/30">
+                      {/* Member name + code */}
                       <td className="px-4 py-3.5">
                         <div className="font-semibold text-foreground">
-                          {lead.name || "Anonymous Customer"}
+                          {member.first_name}
                         </div>
-                        <div className="text-[10px] font-mono text-muted-foreground">
-                          ID: {lead.visitor_id.slice(0, 16)}...
+                        <div className="font-mono text-[10px] text-muted-foreground">
+                          {member.member_code}
                         </div>
                       </td>
 
-                      {/* Phone & Email with Quick Actions */}
-                      <td className="px-4 py-3.5 space-y-1">
-                        {lead.phone ? (
-                          <a
-                            href={`tel:${lead.phone}`}
-                            className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
-                          >
-                            <Phone className="h-3 w-3" />
-                            <span>{lead.phone}</span>
-                          </a>
-                        ) : (
-                          <span className="text-muted-foreground">—</span>
-                        )}
-                        {lead.email && (
-                          <div>
-                            <a
-                              href={`mailto:${lead.email}`}
-                              className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground"
-                            >
-                              <Mail className="h-3 w-3" />
-                              <span>{lead.email}</span>
-                            </a>
-                          </div>
-                        )}
+                      {/* Mobile with quick action */}
+                      <td className="px-4 py-3.5">
+                        <a
+                          href={`tel:${member.phone}`}
+                          className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
+                        >
+                          <Phone className="h-3 w-3" />
+                          <span>{formatPhone(member.phone)}</span>
+                        </a>
                       </td>
 
-                      {/* Device / Phone Model */}
+                      {/* Device */}
                       <td className="px-4 py-3.5">
                         <div className="flex items-center gap-1.5 font-medium">
-                          {lead.device_type === "mobile" ? (
+                          {visitor?.device_type === "mobile" ? (
                             <Smartphone className="h-3.5 w-3.5 text-muted-foreground" />
-                          ) : lead.device_type === "tablet" ? (
+                          ) : visitor?.device_type === "tablet" ? (
                             <Tablet className="h-3.5 w-3.5 text-muted-foreground" />
                           ) : (
                             <Laptop className="h-3.5 w-3.5 text-muted-foreground" />
                           )}
-                          <span>{lead.device_model || "Mobile Device"}</span>
+                          <span>{visitor?.device_model || "Unknown device"}</span>
                         </div>
                         <div className="text-[10px] text-muted-foreground">
-                          {lead.os} · {lead.browser}
+                          {visitor
+                            ? `${visitor.os ?? "—"} · ${visitor.browser ?? "—"}`
+                            : "No telemetry matched"}
                         </div>
                       </td>
 
                       {/* IP & Location */}
                       <td className="px-4 py-3.5">
                         <div className="font-mono text-xs text-foreground">
-                          {lead.last_ip || "Unknown IP"}
+                          {visitor?.last_ip || "—"}
                         </div>
                         <div className="text-[10px] text-muted-foreground">
-                          {[lead.city, lead.region, lead.country].filter(Boolean).join(", ") || "Location unavailable"}
+                          {[visitor?.city, visitor?.region, visitor?.country]
+                            .filter(Boolean)
+                            .join(", ") || "Location unavailable"}
                         </div>
                       </td>
 
-                      {/* Last Seen */}
+                      {/* Joined */}
                       <td className="px-4 py-3.5 text-muted-foreground">
-                        {new Date(lead.last_seen).toLocaleDateString("en-AU", {
+                        {new Date(member.first_seen).toLocaleDateString("en-AU", {
                           month: "short",
                           day: "numeric",
                           hour: "2-digit",
@@ -452,9 +493,20 @@ export default function AdminAnalyticsPage() {
                         })}
                       </td>
 
-                      {/* Total Visits */}
-                      <td className="px-4 py-3.5 text-right font-semibold">
-                        {visitsByVisitor[lead.visitor_id] ?? lead.total_visits ?? 1}
+                      {/* Perk state */}
+                      <td className="px-4 py-3.5 text-right">
+                        <span
+                          className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${
+                            member.perk_used_at
+                              ? "bg-muted text-muted-foreground"
+                              : "bg-primary text-primary-foreground"
+                          }`}
+                        >
+                          {member.perk_used_at ? "Redeemed" : "Available"}
+                        </span>
+                        <div className="mt-0.5 text-[10px] text-muted-foreground">
+                          {visits} {visits === 1 ? "visit" : "visits"}
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -476,7 +528,7 @@ export default function AdminAnalyticsPage() {
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
-                <thead className="border-b border-border bg-muted/40 font-semibold text-muted-foreground uppercase">
+                <thead className="border-b border-border bg-muted/40 font-semibold uppercase text-muted-foreground">
                   <tr>
                     <th className="px-4 py-3">Device & Phone Model</th>
                     <th className="px-4 py-3">IP Address</th>
@@ -500,11 +552,6 @@ export default function AdminAnalyticsPage() {
                             {v.device_model || "Standard Device"}
                           </span>
                         </div>
-                        {v.name && (
-                          <span className="mt-0.5 inline-block rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
-                            {v.name}
-                          </span>
-                        )}
                       </td>
 
                       <td className="px-4 py-3 font-mono text-muted-foreground">
@@ -512,11 +559,12 @@ export default function AdminAnalyticsPage() {
                       </td>
 
                       <td className="px-4 py-3">
-                        <div className="text-foreground font-medium">
+                        <div className="font-medium text-foreground">
                           {v.city ? v.city : v.country ? v.country : "Unknown Location"}
                         </div>
                         <div className="text-[10px] text-muted-foreground">
-                          {[v.region, v.country].filter(Boolean).join(", ") || (v.city ? "" : "Location unavailable")}
+                          {[v.region, v.country].filter(Boolean).join(", ") ||
+                            (v.city ? "" : "Location unavailable")}
                         </div>
                       </td>
 
@@ -563,15 +611,20 @@ export default function AdminAnalyticsPage() {
             ) : (
               <div className="mt-4 divide-y divide-border">
                 {popularItems.map((item, idx) => (
-                  <div key={item.name} className="flex items-center justify-between py-2.5 text-xs">
+                  <div
+                    key={item.name}
+                    className="flex items-center justify-between py-2.5 text-xs"
+                  >
                     <div className="flex items-center gap-2.5">
-                      <span className="grid h-5 w-5 place-items-center rounded bg-muted font-mono font-bold text-[10px]">
+                      <span className="grid h-5 w-5 place-items-center rounded bg-muted font-mono text-[10px] font-bold">
                         {idx + 1}
                       </span>
                       <span className="font-medium text-foreground">{item.name}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="font-semibold text-primary">{item.count} views</span>
+                      <span className="font-semibold text-primary">
+                        {item.count} views
+                      </span>
                     </div>
                   </div>
                 ))}
@@ -587,7 +640,7 @@ export default function AdminAnalyticsPage() {
               Latest clickstream events captured across the storefront.
             </p>
 
-            <div className="mt-4 space-y-2.5 max-h-96 overflow-y-auto">
+            <div className="mt-4 max-h-96 space-y-2.5 overflow-y-auto">
               {events.slice(0, 15).map((ev) => (
                 <div
                   key={ev.id}
@@ -595,7 +648,7 @@ export default function AdminAnalyticsPage() {
                 >
                   <div className="space-y-0.5">
                     <div className="flex items-center gap-1.5">
-                      <span className="rounded bg-primary/10 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-primary uppercase">
+                      <span className="rounded bg-primary/10 px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase text-primary">
                         {ev.event_type.replace("_", " ")}
                       </span>
                       <span className="font-medium text-foreground">

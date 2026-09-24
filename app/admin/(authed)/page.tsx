@@ -1,361 +1,224 @@
 "use client";
 
 import * as React from "react";
-import { Plus, UtensilsCrossed } from "lucide-react";
+import Link from "next/link";
+import {
+  ArrowRight,
+  Coffee,
+  Gift,
+  ReceiptText,
+  Settings2,
+  Users,
+  XCircle,
+} from "lucide-react";
 
-import { AdminBulkBar } from "@/components/admin/admin-bulk-bar";
+import { AdminPageHeader } from "@/components/admin/admin-page-header";
+import { AdminStatCard } from "@/components/admin/admin-stat-card";
+import { Badge } from "@/components/ui/badge";
 import {
-  AdminMetricsBar,
-  type AdminStatusFilter,
-} from "@/components/admin/admin-metrics-bar";
-import { AdminSearchInput } from "@/components/admin/admin-search-input";
-import {
-  CategoryFilter,
-  type CategoryFilterValue,
-} from "@/components/admin/category-filter";
-import { DeleteItemDialog } from "@/components/admin/delete-item-dialog";
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { useMenuItems } from "@/lib/hooks/use-menu-items";
-import { ItemFormDialog } from "@/components/admin/item-form-dialog";
-import { ItemsTable } from "@/components/admin/items-table";
-import { PriceEditDialog } from "@/components/admin/price-edit-dialog";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import type { MenuItem } from "@/lib/types/database";
-import type { MenuItemFormValues } from "@/lib/validations/menu";
+import { useOrders } from "@/lib/hooks/use-orders";
+import { useRewards } from "@/lib/hooks/use-rewards";
+import { formatAUD } from "@/lib/money";
+import { formatOrderNumber } from "@/lib/orders";
+import { formatVenueTime, venueDateString } from "@/lib/time";
+import { createClient } from "@/utils/supabase/client";
 
-export default function AdminItemsPage() {
-  const {
-    items,
-    isLoading,
-    error,
-    pendingIds,
-    reload,
-    toggleAvailability,
-    toggleSpecial,
-    updatePrices,
-    saveItem,
-    deleteItem,
-    bulkUpdateAvailability,
-    bulkUpdateSpecial,
-  } = useMenuItems();
+export default function AdminOverviewPage() {
+  const { orders } = useOrders();
+  const { items } = useMenuItems();
+  const { members } = useRewards();
 
-  const [filter, setFilter] = React.useState<CategoryFilterValue>("all");
-  const [statusFilter, setStatusFilter] =
-    React.useState<AdminStatusFilter>("all");
-  const [searchQuery, setSearchQuery] = React.useState("");
+  const supabase = React.useMemo(() => createClient(), []);
+  const [liveVisitors, setLiveVisitors] = React.useState<number | null>(null);
+  const [dateLabel, setDateLabel] = React.useState("");
 
-  const [selectedIds, setSelectedIds] = React.useState<string[]>([]);
-  const [isBulkProcessing, setIsBulkProcessing] = React.useState(false);
-
-  const [isFormOpen, setIsFormOpen] = React.useState(false);
-  const [editingItem, setEditingItem] = React.useState<MenuItem | null>(null);
-  const [initialFormValues, setInitialFormValues] =
-    React.useState<MenuItemFormValues | null>(null);
-  const [priceItem, setPriceItem] = React.useState<MenuItem | null>(null);
-  const [deleteTarget, setDeleteTarget] = React.useState<MenuItem | null>(null);
-
-  const counts = React.useMemo(
-    () =>
-      items.reduce<Record<string, number>>((acc, item) => {
-        acc[item.category] = (acc[item.category] ?? 0) + 1;
-        return acc;
-      }, {}),
-    [items],
-  );
-
-  const availableCount = React.useMemo(
-    () => items.filter((i) => i.is_available).length,
-    [items],
-  );
-  const soldOutCount = React.useMemo(
-    () => items.filter((i) => !i.is_available).length,
-    [items],
-  );
-  const specialsCount = React.useMemo(
-    () => items.filter((i) => i.is_special).length,
-    [items],
-  );
-
-  const visibleItems = React.useMemo(() => {
-    return items.filter((item) => {
-      if (filter !== "all" && item.category !== filter) return false;
-      if (statusFilter === "in_stock" && !item.is_available) return false;
-      if (statusFilter === "sold_out" && item.is_available) return false;
-      if (statusFilter === "specials" && !item.is_special) return false;
-
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase().trim();
-        const matchName = item.name.toLowerCase().includes(q);
-        const matchDesc = item.description?.toLowerCase().includes(q);
-        if (!matchName && !matchDesc) return false;
-      }
-      return true;
-    });
-  }, [items, filter, statusFilter, searchQuery]);
-
-  const openCreate = () => {
-    setEditingItem(null);
-    setInitialFormValues(null);
-    setIsFormOpen(true);
-  };
-
-  const openEdit = (item: MenuItem) => {
-    setEditingItem(item);
-    setInitialFormValues(null);
-    setIsFormOpen(true);
-  };
-
-  const handleDuplicate = (item: MenuItem) => {
-    setEditingItem(null);
-    setInitialFormValues({
-      name: `${item.name} (Copy)`,
-      category: item.category,
-      description: item.description ?? "",
-      price_single:
-        item.price_single != null ? String(item.price_single) : "",
-      price_small: item.price_small != null ? String(item.price_small) : "",
-      price_medium:
-        item.price_medium != null ? String(item.price_medium) : "",
-      price_large: item.price_large != null ? String(item.price_large) : "",
-      image_url: item.image_url ?? "",
-      is_available: item.is_available,
-      is_special: item.is_special,
-      display_order: (item.display_order ?? 0) + 1,
-    });
-    setIsFormOpen(true);
-  };
-
-  const toggleSelect = (id: string) => {
-    setSelectedIds((current) =>
-      current.includes(id)
-        ? current.filter((item) => item !== id)
-        : [...current, id],
+  // Both of these depend on "now", which differs between the prerender and the
+  // browser — so they are only filled in after mount to avoid a mismatch.
+  React.useEffect(() => {
+    setDateLabel(
+      formatVenueTime(new Date(), {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+      }),
     );
-  };
+  }, []);
 
-  const toggleSelectAll = () => {
-    const visibleIds = visibleItems.map((item) => item.id);
-    const allSelected =
-      visibleIds.length > 0 &&
-      visibleIds.every((id) => selectedIds.includes(id));
+  React.useEffect(() => {
+    let isActive = true;
+    const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000).toISOString();
 
-    if (allSelected) {
-      setSelectedIds((current) =>
-        current.filter((id) => !visibleIds.includes(id)),
-      );
-    } else {
-      setSelectedIds((current) =>
-        Array.from(new Set([...current, ...visibleIds])),
-      );
-    }
-  };
+    void (async () => {
+      const { count } = await supabase
+        .from("analytics_visitors")
+        .select("visitor_id", { count: "exact", head: true })
+        .gte("last_seen", fifteenMinutesAgo);
+      if (isActive) setLiveVisitors(count ?? 0);
+    })();
 
-  const handleBulkInStock = async () => {
-    setIsBulkProcessing(true);
-    await bulkUpdateAvailability(selectedIds, true);
-    setIsBulkProcessing(false);
-    setSelectedIds([]);
-  };
+    return () => {
+      isActive = false;
+    };
+  }, [supabase]);
 
-  const handleBulkSoldOut = async () => {
-    setIsBulkProcessing(true);
-    await bulkUpdateAvailability(selectedIds, false);
-    setIsBulkProcessing(false);
-    setSelectedIds([]);
-  };
-
-  const handleBulkSpecial = async (special: boolean) => {
-    setIsBulkProcessing(true);
-    await bulkUpdateSpecial(selectedIds, special);
-    setIsBulkProcessing(false);
-    setSelectedIds([]);
-  };
+  const today = venueDateString();
+  const todayOrders = orders.filter(
+    (order) => order.order_day === today && order.status !== "void",
+  );
+  const openOrders = todayOrders.filter((order) => order.status === "new");
+  const todayTakings = todayOrders.reduce(
+    (total, order) => total + Number(order.subtotal ?? 0),
+    0,
+  );
+  const soldOut = items.filter((item) => !item.is_available);
+  const perksUnused = members.filter((member) => !member.perk_used_at);
 
   return (
-    <>
-      <div className="flex flex-col gap-5 pb-16">
-        {/* Top Header & Add Button */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between pt-1">
-          <div>
-            <h1 className="font-display text-2xl font-bold tracking-tight">
-              Menu items
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              {items.length} {items.length === 1 ? "item" : "items"} · instant
-              switches and live search
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button onClick={openCreate} className="touch-target gap-1.5 shadow-sm">
-              <Plus className="h-4 w-4" />
-              Add item
-            </Button>
-          </div>
-        </div>
+    <div className="flex flex-col gap-6 pb-16">
+      <AdminPageHeader
+        title="Overview"
+        description={dateLabel || "Today"}
+        actions={
+          <Link
+            href="/admin/orders/board"
+            className="inline-flex items-center gap-1.5 rounded-full bg-foreground px-4 py-2 text-xs font-semibold text-background transition hover:bg-foreground/85"
+          >
+            <ReceiptText className="h-3.5 w-3.5" />
+            <span>Open bench board</span>
+          </Link>
+        }
+      />
 
-        {/* Metrics & Status Strip */}
-        <AdminMetricsBar
-          total={items.length}
-          availableCount={availableCount}
-          soldOutCount={soldOutCount}
-          specialsCount={specialsCount}
-          statusFilter={statusFilter}
-          onStatusFilterChange={setStatusFilter}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <AdminStatCard
+          label="Open tickets"
+          value={openOrders.length}
+          hint={`${todayOrders.length} today · ${formatAUD(todayTakings)}`}
+          icon={ReceiptText}
+          href="/admin/orders"
+          tone="accent"
         />
-
-        {/* Search Bar & Category Tabs */}
-        <div className="flex flex-col gap-3">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <AdminSearchInput
-              value={searchQuery}
-              onChange={setSearchQuery}
-              placeholder="Search items by name or notes… (/)"
-              className="w-full sm:max-w-md"
-            />
-            {statusFilter !== "all" || searchQuery ? (
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <span>
-                  Showing {visibleItems.length} of {items.length}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setStatusFilter("all");
-                    setSearchQuery("");
-                    setFilter("all");
-                  }}
-                  className="font-medium text-primary hover:underline"
-                >
-                  Reset filters
-                </button>
-              </div>
-            ) : null}
-          </div>
-
-          <CategoryFilter
-            active={filter}
-            counts={counts}
-            total={items.length}
-            onChange={setFilter}
-          />
-        </div>
-
-        {error ? (
-          <Card>
-            <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
-              <p className="text-sm text-destructive">{error}</p>
-              <Button variant="outline" size="sm" onClick={() => void reload()}>
-                Try again
-              </Button>
-            </CardContent>
-          </Card>
-        ) : null}
-
-        {!error && isLoading ? (
-          <div className="flex flex-col gap-2" aria-hidden="true">
-            {[0, 1, 2, 3].map((row) => (
-              <div
-                key={row}
-                className="h-16 w-full animate-pulse rounded-lg bg-muted"
-              />
-            ))}
-          </div>
-        ) : null}
-
-        {!error && !isLoading && visibleItems.length === 0 ? (
-          <Card>
-            <CardContent className="flex flex-col items-center gap-3 py-14 text-center">
-              <span className="grid h-12 w-12 place-items-center rounded-full bg-muted text-muted-foreground">
-                <UtensilsCrossed className="h-5 w-5" />
-              </span>
-              <div>
-                <p className="font-medium">
-                  {searchQuery || statusFilter !== "all" || filter !== "all"
-                    ? "No matching menu items"
-                    : "No menu items yet"}
-                </p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {searchQuery || statusFilter !== "all" || filter !== "all"
-                    ? "Try adjusting your search keyword or clearing the filters."
-                    : "Add your first item to get the artisan menu started."}
-                </p>
-              </div>
-              {searchQuery || statusFilter !== "all" || filter !== "all" ? (
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setSearchQuery("");
-                    setStatusFilter("all");
-                    setFilter("all");
-                  }}
-                >
-                  Clear all filters
-                </Button>
-              ) : (
-                <Button onClick={openCreate}>
-                  <Plus className="h-4 w-4" />
-                  Add item
-                </Button>
-              )}
-            </CardContent>
-          </Card>
-        ) : null}
-
-        {!error && !isLoading && visibleItems.length > 0 ? (
-          <Card className="border-border/80 shadow-sm">
-            <CardContent className="px-3 py-1 sm:px-5">
-              <ItemsTable
-                items={visibleItems}
-                pendingIds={pendingIds}
-                selectedIds={selectedIds}
-                onToggleSelect={toggleSelect}
-                onSelectAll={toggleSelectAll}
-                onToggleAvailability={(item, next) =>
-                  void toggleAvailability(item, next)
-                }
-                onToggleSpecial={(item, next) => void toggleSpecial(item, next)}
-                onEdit={openEdit}
-                onDuplicate={handleDuplicate}
-                onEditPrice={setPriceItem}
-                onDelete={setDeleteTarget}
-              />
-            </CardContent>
-          </Card>
-        ) : null}
+        <AdminStatCard
+          label="Live visitors (15m)"
+          value={liveVisitors ?? "—"}
+          hint="Storefront activity"
+          icon={Users}
+          href="/admin/analytics"
+        />
+        <AdminStatCard
+          label="Rewards members"
+          value={members.length}
+          hint={`${perksUnused.length} perk unused`}
+          icon={Gift}
+          href="/admin/rewards"
+          tone="positive"
+        />
+        <AdminStatCard
+          label="Sold out"
+          value={soldOut.length}
+          hint={`of ${items.length} items`}
+          icon={XCircle}
+          href="/admin/items"
+          tone={soldOut.length > 0 ? "warning" : "default"}
+        />
       </div>
 
-      <AdminBulkBar
-        selectedCount={selectedIds.length}
-        isProcessing={isBulkProcessing}
-        onMarkInStock={handleBulkInStock}
-        onMarkSoldOut={handleBulkSoldOut}
-        onToggleSpecial={handleBulkSpecial}
-        onClearSelection={() => setSelectedIds([])}
-      />
+      <Card>
+        <CardHeader className="flex-row items-center justify-between gap-3">
+          <div>
+            <CardTitle>Latest tickets</CardTitle>
+            <CardDescription>
+              Baskets submitted from the storefront.
+            </CardDescription>
+          </div>
+          <Link
+            href="/admin/orders"
+            className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-primary hover:underline"
+          >
+            <span>View all</span>
+            <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
+        </CardHeader>
+        <CardContent>
+          {orders.length === 0 ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">
+              No tickets yet. When a customer submits a basket, it appears here
+              and on the bench board.
+            </p>
+          ) : (
+            <ul className="divide-y divide-border">
+              {orders.slice(0, 5).map((order) => (
+                <li
+                  key={order.id}
+                  className="flex items-center justify-between gap-3 py-2.5"
+                >
+                  <span className="flex items-center gap-2.5">
+                    <span className="font-display text-lg font-bold tabular-nums">
+                      {formatOrderNumber(order.order_number)}
+                    </span>
+                    <Badge
+                      variant={order.status === "new" ? "default" : "muted"}
+                      className="text-[10px]"
+                    >
+                      {order.status === "new" ? "New" : "Served"}
+                    </Badge>
+                    <span className="text-xs text-muted-foreground">
+                      {order.item_count} {order.item_count === 1 ? "item" : "items"}
+                    </span>
+                  </span>
+                  <span className="text-sm font-semibold tabular-nums">
+                    {formatAUD(order.subtotal)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
 
-      <ItemFormDialog
-        open={isFormOpen}
-        onOpenChange={setIsFormOpen}
-        item={editingItem}
-        initialValues={initialFormValues}
-        onSave={saveItem}
-      />
-
-      <PriceEditDialog
-        item={priceItem}
-        onOpenChange={(open) => {
-          if (!open) setPriceItem(null);
-        }}
-        onSave={updatePrices}
-      />
-
-      <DeleteItemDialog
-        item={deleteTarget}
-        onOpenChange={(open) => {
-          if (!open) setDeleteTarget(null);
-        }}
-        onConfirm={deleteItem}
-      />
-    </>
+      <div className="grid gap-3 sm:grid-cols-3">
+        {[
+          {
+            href: "/admin/items",
+            label: "Menu items",
+            hint: "Prices, stock and specials",
+            icon: Coffee,
+          },
+          {
+            href: "/admin/rewards",
+            label: "Foundry Rewards",
+            hint: "Members and perk redemption",
+            icon: Gift,
+          },
+          {
+            href: "/admin/settings",
+            label: "Settings",
+            hint: "Hours, surcharge, counter and rewards",
+            icon: Settings2,
+          },
+        ].map(({ href, label, hint, icon: Icon }) => (
+          <Link
+            key={href}
+            href={href}
+            className="flex items-start gap-3 rounded-xl border border-border bg-card p-4 shadow-sm transition hover:border-foreground/30 hover:bg-muted/40"
+          >
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-muted text-primary">
+              <Icon className="h-4 w-4" />
+            </span>
+            <span className="min-w-0">
+              <span className="block text-sm font-semibold">{label}</span>
+              <span className="block text-xs text-muted-foreground">{hint}</span>
+            </span>
+          </Link>
+        ))}
+      </div>
+    </div>
   );
 }

@@ -4,6 +4,7 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 
 import { AdminHeader } from "@/components/admin/admin-header";
+import { AdminSidebar } from "@/components/admin/admin-sidebar";
 import { createClient } from "@/utils/supabase/client";
 
 function ShellSkeleton() {
@@ -16,6 +17,13 @@ function ShellSkeleton() {
   );
 }
 
+/**
+ * Admin shell: a fixed sidebar from `lg` up, and a top bar with a drawer below
+ * it. The navigation itself is shared (`AdminNav`) so both forms stay in step.
+ *
+ * The session check is a UX gate only — RLS is what actually enforces access,
+ * and every admin policy now requires `app_metadata.role = 'admin'`.
+ */
 export default function AdminLayout({
   children,
 }: {
@@ -57,10 +65,16 @@ export default function AdminLayout({
 
   return (
     <div className="min-h-screen bg-background">
-      <AdminHeader />
-      <main className="mx-auto w-full max-w-5xl px-4 pb-24 pt-4 sm:px-6">
-        {isReady ? children : <ShellSkeleton />}
-      </main>
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-60 border-r border-border bg-card lg:block">
+        <AdminSidebar />
+      </aside>
+
+      <div className="lg:pl-60">
+        <AdminHeader />
+        <main className="mx-auto w-full max-w-5xl px-4 pb-24 pt-4 sm:px-6">
+          {isReady ? children : <ShellSkeleton />}
+        </main>
+      </div>
     </div>
   );
 }
