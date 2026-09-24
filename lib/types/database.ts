@@ -168,15 +168,31 @@ export interface RewardsConfig {
 /* Counter order tickets                                                       */
 /* -------------------------------------------------------------------------- */
 
-export const ORDER_STATUS_VALUES = ["new", "served", "void"] as const;
+export const ORDER_STATUS_VALUES = [
+  "new",
+  "preparing",
+  "served",
+  "void",
+  "cancelled",
+] as const;
 
 export type OrderStatus = (typeof ORDER_STATUS_VALUES)[number];
 
+/** Staff-facing wording. `void` is a staff cancellation, `cancelled` is the customer's. */
 export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   new: "New",
+  preparing: "Preparing",
   served: "Served",
   void: "Void",
+  cancelled: "Cancelled by customer",
 };
+
+/** The steps a customer is shown, in order. */
+export const CUSTOMER_ORDER_STEPS: { value: OrderStatus; label: string }[] = [
+  { value: "new", label: "Received" },
+  { value: "preparing", label: "Being made" },
+  { value: "served", label: "Served" },
+];
 
 export interface OrderModifier {
   label: string;
@@ -219,6 +235,8 @@ export interface OrdersConfig {
   enabled: boolean;
   counter_message: string;
   board_title: string;
+  /** How long a customer may cancel their own ticket, in minutes. */
+  cancel_window_minutes: number;
 }
 
 /**

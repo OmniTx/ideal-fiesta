@@ -2,6 +2,7 @@ import { isMissingFunction } from "@/lib/rpc";
 import { getVisitorSecret } from "@/lib/visitor-identity";
 import { createClient } from "@/utils/supabase/client";
 import type { CartLine } from "@/lib/cart";
+import { CUSTOMER_ORDER_STEPS } from "@/lib/types/database";
 import type {
   Order,
   OrderItem,
@@ -14,12 +15,58 @@ export const DEFAULT_ORDERS_CONFIG: OrdersConfig = {
   counter_message:
     "Show your order number at the counter and we'll ring your basket up there.",
   board_title: "Today's tickets",
+  cancel_window_minutes: 5,
 };
 
 export function mergeOrdersConfig(
   partial: Partial<OrdersConfig> | null | undefined,
 ): OrdersConfig {
   return { ...DEFAULT_ORDERS_CONFIG, ...(partial ?? {}) };
+}
+
+/** A ticket still being worked on — the ones that belong on the bench board. */
+export function isOrderActive(status: OrderStatus): boolean {
+  return status === "new" || status === "preparing";
+}
+
+/**
+ * What the customer is shown. Both cancellation routes collapse to one word —
+ * which of them happened is a staff concern, not the customer's.
+ */
+export function customerStatusLabel(status: OrderStatus): string {
+  if (status === "void" || status === "cancelled") return "Cancelled";
+  const step = CUSTOMER_ORDER_STEPS.find((entry) => entry.value === status);
+  return step?.label ?? status;
+}
+
+/**
+ * Whether the customer-facing cancel button should be offered.
+ *
+ * Advisory only — it runs on the device clock, and the real decision is made by
+ * `cancel_own_order` in Postgres, which re-checks both the status and the window.
+ */
+export function canCancelOrder(
+  order: Order,
+  cancelWindowMinutes: number,
+): boolean {
+  if (order.status !== "new") return false;
+  const ageMs = Date.now() - new Date(order.created_at).getTime();
+  return ageMs <= cancelWindowMinutes * 60 * 1000;
+}
+
+/** Customer-initiated cancellation. Resolves to the updated ticket. */
+export async function cancelOrder(orderId: string): Promise<Order> {
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("cancel_own_order", {
+    p_order_id: orderId,
+    p_secret: getVisitorSecret(),
+  });
+
+  if (error) throw new Error(error.message);
+
+  const payload = data as { order?: Order } | null;
+  if (!payload?.order) throw new Error("The ticket could not be cancelled.");
+  return payload.order;
 }
 
 /** `#014` — short enough to shout across a bench, and stable for the record. */

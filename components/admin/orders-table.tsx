@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Check, Loader2, Pencil, RotateCcw, Trash2 } from "lucide-react";
+import { Check, ChefHat, Loader2, Pencil, RotateCcw, Trash2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -9,12 +9,17 @@ import { formatAUD } from "@/lib/money";
 import { formatOrderNumber } from "@/lib/orders";
 import { formatVenueTime } from "@/lib/time";
 import { cn } from "@/lib/utils";
-import type { Order, OrderItem } from "@/lib/types/database";
+import {
+  ORDER_STATUS_LABELS,
+  type Order,
+  type OrderItem,
+  type OrderStatus,
+} from "@/lib/types/database";
 
 interface OrdersTableProps {
   orders: Order[];
   pendingIds: string[];
-  onStatusChange: (order: Order, status: "served" | "void") => void;
+  onStatusChange: (order: Order, status: OrderStatus) => void;
   onEdit: (order: Order) => void;
   onDelete: (order: Order) => void;
 }
@@ -58,13 +63,15 @@ export function OrdersTable({
                   variant={
                     order.status === "new"
                       ? "default"
-                      : order.status === "void"
-                        ? "destructive"
-                        : "muted"
+                      : order.status === "preparing"
+                        ? "secondary"
+                        : order.status === "void" || order.status === "cancelled"
+                          ? "destructive"
+                          : "muted"
                   }
                   className="text-[10px] uppercase"
                 >
-                  {order.status}
+                  {ORDER_STATUS_LABELS[order.status]}
                 </Badge>
                 <span className="text-xs text-muted-foreground">
                   {formatVenueTime(new Date(order.created_at), {
@@ -85,6 +92,31 @@ export function OrdersTable({
                 </span>
 
                 {order.status === "new" ? (
+                  <>
+                    <Button
+                      size="sm"
+                      onClick={() => onStatusChange(order, "preparing")}
+                      disabled={isPending}
+                      className="h-9 gap-1.5 text-xs"
+                    >
+                      {isPending ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <ChefHat className="h-3.5 w-3.5" />
+                      )}
+                      Start
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => onStatusChange(order, "void")}
+                      disabled={isPending}
+                      className="h-9 text-xs text-muted-foreground hover:text-destructive"
+                    >
+                      Void
+                    </Button>
+                  </>
+                ) : order.status === "preparing" ? (
                   <>
                     <Button
                       size="sm"
@@ -113,8 +145,8 @@ export function OrdersTable({
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => onStatusChange(order, "served")}
-                    disabled={isPending || order.status === "served"}
+                    onClick={() => onStatusChange(order, "new")}
+                    disabled={isPending}
                     className="h-9 gap-1.5 text-xs"
                   >
                     <RotateCcw className="h-3.5 w-3.5" />

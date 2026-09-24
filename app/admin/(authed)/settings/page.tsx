@@ -166,6 +166,10 @@ export default function AdminSettingsPage() {
         enabled: ordersConfig.enabled,
         counter_message: ordersConfig.counter_message.trim(),
         board_title: ordersConfig.board_title.trim(),
+        cancel_window_minutes: Math.max(
+          0,
+          Number(ordersConfig.cancel_window_minutes) || 0,
+        ),
       });
       await saveSetting("rewards_config", {
         enabled: rewardsConfig.enabled,
@@ -276,6 +280,29 @@ export default function AdminSettingsPage() {
               }
               autoComplete="off"
             />
+          </div>
+
+          <div className="flex flex-col gap-1.5 sm:max-w-[240px]">
+            <Label htmlFor="orders-cancel-window">Customer cancel window</Label>
+            <Input
+              id="orders-cancel-window"
+              type="number"
+              min={0}
+              max={120}
+              inputMode="numeric"
+              value={ordersConfig.cancel_window_minutes}
+              onChange={(event) =>
+                setOrdersConfig((current) => ({
+                  ...current,
+                  cancel_window_minutes: Number(event.target.value),
+                }))
+              }
+            />
+            <p className="text-[11px] text-muted-foreground">
+              Minutes after submitting that a customer can still cancel. Only
+              applies while the ticket is untouched — once staff start it, it
+              can no longer be cancelled from the phone. 0 disables it.
+            </p>
           </div>
         </CardContent>
       </Card>

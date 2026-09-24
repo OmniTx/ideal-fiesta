@@ -11,6 +11,7 @@ import { OrdersTable } from "@/components/admin/orders-table";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useOrders } from "@/lib/hooks/use-orders";
+import { isOrderActive } from "@/lib/orders";
 import { venueDateString } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import type { Order } from "@/lib/types/database";
@@ -41,7 +42,7 @@ export default function AdminOrdersPage() {
   const today = venueDateString();
   const visible = orders.filter((order) => {
     if (filter === "all") return true;
-    if (filter === "open") return order.status === "new";
+    if (filter === "open") return isOrderActive(order.status);
     return order.order_day === today;
   });
 

@@ -3,9 +3,6 @@
 import * as React from "react";
 
 import { cartCount, cartTotal, lineSignature, type CartLine } from "@/lib/cart";
-import { DEFAULT_ORDERS_CONFIG, mergeOrdersConfig } from "@/lib/orders";
-import { fetchSetting } from "@/lib/settings";
-import type { OrdersConfig } from "@/lib/types/database";
 
 const CART_KEY = "foundry_cart_v1";
 
@@ -15,7 +12,6 @@ interface CartContextValue {
   total: number;
   isReady: boolean;
   isOpen: boolean;
-  ordersConfig: OrdersConfig;
   addLine: (line: Omit<CartLine, "id" | "quantity">, quantity?: number) => void;
   setQuantity: (id: string, quantity: number) => void;
   removeLine: (id: string) => void;
@@ -28,16 +24,16 @@ const CartContext = React.createContext<CartContextValue | null>(null);
 
 /**
  * The basket, shared by the product sheet, the header badge and the cart panel,
- * and persisted to localStorage so it survives a reload on the walk to the
- * counter. Prices here are display values — Postgres recomputes every total.
+ * and persisted to localStorage so it survives the walk to the counter.
+ *
+ * Prices here are display values — Postgres recomputes every total, and the
+ * submitted ticket is owned by `OrderProvider`, which is where a customer
+ * watches it afterwards.
  */
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [lines, setLines] = React.useState<CartLine[]>([]);
   const [isReady, setIsReady] = React.useState(false);
   const [isOpen, setIsOpen] = React.useState(false);
-  const [ordersConfig, setOrdersConfig] = React.useState<OrdersConfig>(
-    DEFAULT_ORDERS_CONFIG,
-  );
 
   // Read after mount only: the server has no basket, so doing this in the initial
   // render would produce a hydration mismatch.
@@ -62,21 +58,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       // Storage full or blocked — the basket just won't survive a reload.
     }
   }, [lines, isReady]);
-
-  React.useEffect(() => {
-    let isActive = true;
-    void (async () => {
-      try {
-        const saved = await fetchSetting<Partial<OrdersConfig>>("orders_config");
-        if (isActive) setOrdersConfig(mergeOrdersConfig(saved));
-      } catch {
-        // Keep the defaults.
-      }
-    })();
-    return () => {
-      isActive = false;
-    };
-  }, []);
 
   // Lock the page behind the panel, matching the storefront drawer.
   React.useEffect(() => {
@@ -143,7 +124,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       total: cartTotal(lines),
       isReady,
       isOpen,
-      ordersConfig,
       addLine,
       setQuantity,
       removeLine,
@@ -151,7 +131,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       openCart: () => setIsOpen(true),
       closeCart: () => setIsOpen(false),
     }),
-    [lines, isReady, isOpen, ordersConfig, addLine, setQuantity, removeLine, clear],
+    [lines, isReady, isOpen, addLine, setQuantity, removeLine, clear],
   );
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

@@ -13,7 +13,11 @@ import {
   type OrderEditInput,
 } from "@/lib/orders";
 import { subscribeToTableChanges } from "@/lib/realtime";
-import type { Order, OrderStatus } from "@/lib/types/database";
+import {
+  ORDER_STATUS_LABELS,
+  type Order,
+  type OrderStatus,
+} from "@/lib/types/database";
 
 export interface TicketLineEdit {
   /** itemId -> new quantity, for lines whose quantity changed. */
@@ -93,9 +97,7 @@ export function useOrders({ live = true }: { live?: boolean } = {}) {
       try {
         await updateOrder(order.id, { status });
         toast.success(
-          status === "served"
-            ? `Ticket ${formatOrderNumber(order.order_number)} marked served`
-            : `Ticket ${formatOrderNumber(order.order_number)} voided`,
+          `Ticket ${formatOrderNumber(order.order_number)} · ${ORDER_STATUS_LABELS[status].toLowerCase()}`,
         );
         return true;
       } catch (err) {

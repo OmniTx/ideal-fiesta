@@ -1,20 +1,25 @@
 "use client";
 
 import * as React from "react";
-import { Bell, BellOff, Check, Loader2 } from "lucide-react";
+import { Bell, BellOff, Check, ChefHat, Loader2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatAUD } from "@/lib/money";
-import { formatOrderNumber } from "@/lib/orders";
+import { formatOrderNumber, isOrderActive } from "@/lib/orders";
 import { formatVenueTime } from "@/lib/time";
 import { cn } from "@/lib/utils";
-import type { Order, OrderItem } from "@/lib/types/database";
+import {
+  ORDER_STATUS_LABELS,
+  type Order,
+  type OrderItem,
+  type OrderStatus,
+} from "@/lib/types/database";
 
 interface OrdersBoardProps {
   orders: Order[];
   pendingIds: string[];
-  onStatusChange: (order: Order, status: "served" | "void") => void;
+  onStatusChange: (order: Order, status: OrderStatus) => void;
   title: string;
 }
 
@@ -98,7 +103,7 @@ export function OrdersBoard({
     if (hasNewTicket && soundOn) chime();
   }, [orders, soundOn, chime]);
 
-  const openTickets = orders.filter((order) => order.status === "new");
+  const openTickets = orders.filter((order) => isOrderActive(order.status));
   const justServed = orders
     .filter((order) => order.status === "served")
     .slice(0, 6);
@@ -162,9 +167,11 @@ export function OrdersBoard({
                     {formatOrderNumber(order.order_number)}
                   </span>
                   <div className="text-right">
-                    <Badge className="text-[10px] uppercase">
-                      {order.item_count}{" "}
-                      {order.item_count === 1 ? "item" : "items"}
+                    <Badge
+                      variant={order.status === "new" ? "default" : "secondary"}
+                      className="text-[10px] uppercase"
+                    >
+                      {ORDER_STATUS_LABELS[order.status]}
                     </Badge>
                     <p className="mt-1 text-xs text-muted-foreground">
                       {formatVenueTime(new Date(order.created_at), {
@@ -209,19 +216,35 @@ export function OrdersBoard({
                     >
                       Void
                     </Button>
-                    <Button
-                      size="sm"
-                      onClick={() => onStatusChange(order, "served")}
-                      disabled={isPending}
-                      className="h-11 gap-1.5 text-sm"
-                    >
-                      {isPending ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Check className="h-4 w-4" />
-                      )}
-                      Served
-                    </Button>
+                    {order.status === "new" ? (
+                      <Button
+                        size="sm"
+                        onClick={() => onStatusChange(order, "preparing")}
+                        disabled={isPending}
+                        className="h-11 gap-1.5 text-sm"
+                      >
+                        {isPending ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <ChefHat className="h-4 w-4" />
+                        )}
+                        Start
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        onClick={() => onStatusChange(order, "served")}
+                        disabled={isPending}
+                        className="h-11 gap-1.5 text-sm"
+                      >
+                        {isPending ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Check className="h-4 w-4" />
+                        )}
+                        Served
+                      </Button>
+                    )}
                   </div>
                 </div>
               </div>
