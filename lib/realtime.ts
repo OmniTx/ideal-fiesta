@@ -246,39 +246,68 @@ export function subscribeToOrderSignals(onSignal: () => void): () => void {
 
 export type RealtimeStatus = "connecting" | "connected" | "error";
 
+export interface RealtimeHealth {
+  /** The channel the app actually uses. */
+  private: RealtimeStatus;
+  /** The same topic without the private flag, to isolate the cause. */
+  public: RealtimeStatus;
+  /** Whatever the server said when it refused, if it said anything. */
+  error: string | null;
+}
+
 /**
- * Probes whether this browser can actually join the realtime topic, and reports
- * the result.
+ * Probes whether this browser can actually join the realtime topic.
  *
  * A WebSocket that connects proves nothing — the join is a message on top of it
- * and can be rejected by the `realtime.messages` policies. The socket showed
- * `101 Switching Protocols` while nothing was ever delivered, which is exactly
- * the failure this makes visible instead of silent.
+ * and is separately authorised. The socket reported `101 Switching Protocols`
+ * while nothing was ever delivered, and a subscribe callback that fires no
+ * status at all is a hang rather than a refusal, so both are probed here: the
+ * private channel the app uses, and the same topic without the private flag. If
+ * one subscribes and the other does not, the `config.private` flag is the cause.
  */
 export function subscribeToRealtimeHealth(
-  onStatus: (status: RealtimeStatus) => void,
+  onChange: (health: RealtimeHealth) => void,
 ): () => void {
   if (typeof window === "undefined") return () => {};
 
-  onStatus("connecting");
+  const state: RealtimeHealth = {
+    private: "connecting",
+    public: "connecting",
+    error: null,
+  };
 
   const supabase = createClient();
-  const channel = supabase.channel(REALTIME_CHANNEL, {
-    config: { private: true },
-  });
 
-  channel.subscribe((status) => {
-    if (status === "SUBSCRIBED") {
-      onStatus("connected");
-      return;
-    }
-    if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
-      onStatus("error");
-    }
-  });
+  const probe = (isPrivate: boolean) => {
+    const channel = supabase.channel(
+      REALTIME_CHANNEL,
+      isPrivate ? { config: { private: true } } : undefined,
+    );
+
+    channel.subscribe((status, error) => {
+      if (status === "SUBSCRIBED") {
+        state[isPrivate ? "private" : "public"] = "connected";
+      } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+        state[isPrivate ? "private" : "public"] = "error";
+        if (error?.message) {
+          state.error = error.message;
+          console.warn(`[Realtime] join refused: ${error.message}`);
+        }
+      }
+      onChange({ ...state });
+    });
+
+    return channel;
+  };
+
+  const privateChannel = probe(true);
+  const publicChannel = probe(false);
+
+  onChange({ ...state });
 
   return () => {
-    void supabase.removeChannel(channel);
+    void supabase.removeChannel(privateChannel);
+    void supabase.removeChannel(publicChannel);
   };
 }
 
@@ -311,11 +340,14 @@ export function subscribeToTableChanges(
 
   // Without a status callback a rejected join is completely silent: the page
   // simply stops updating and it reads like a data problem rather than a
-  // connection one.
-  channel.subscribe((status) => {
+  // connection one. The server's own wording is the most useful part, so it is
+  // logged rather than just the status.
+  channel.subscribe((status, error) => {
     if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
       console.warn(
-        `[Realtime] subscription to ${tables.join(", ")} failed: ${status}`,
+        `[Realtime] subscription to ${tables.join(", ")} failed: ${status}${
+          error?.message ? ` — ${error.message}` : ""
+        }`,
       );
     }
   });
