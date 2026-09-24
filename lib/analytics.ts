@@ -1,6 +1,7 @@
 "use client";
 
 import { broadcastRealtimeEvent } from "@/lib/realtime";
+import { isMissingFunction } from "@/lib/rpc";
 import { getVisitorId, getVisitorSecret } from "@/lib/visitor-identity";
 import { createClient } from "@/utils/supabase/client";
 import type { AnalyticsVisitor } from "@/lib/types/database";
@@ -260,32 +261,58 @@ interface EventInsert {
 }
 
 /**
- * Persist a visitor snapshot. RLS lets an anonymous browser insert/update only
- * the analytics_visitors row carrying its own capability token, so this works
- * with no admin session or open dashboard. Only the columns passed in are
- * written, so a plain pageview never clobbers a previously captured
- * name/phone/email.
+ * Persist activity through `track_visit`, which takes the capability token as a
+ * parameter and compares it against the stored row inside SQL.
+ *
+ * The token deliberately does NOT travel in the `x-visitor-secret` header any
+ * more. The header path proved reliable when a request was made by hand but the
+ * storefront's own requests were refused by every policy that used it, and a
+ * request header is the wrong place to put the one value the whole ownership
+ * check depends on.
+ *
+ * Falls back to the two direct table writes only when that function is absent,
+ * so a project that has not applied 0011 keeps working.
  */
-async function upsertVisitor(fields: VisitorUpsert): Promise<void> {
-  try {
-    const supabase = createClient();
-    const { error } = await supabase
-      .from("analytics_visitors")
-      .upsert(fields, { onConflict: "visitor_id" });
-    if (error) console.warn("[Analytics] Visitor upsert failed:", error.message);
-  } catch {
-    // Non-fatal
-  }
-}
+async function recordActivity(input: {
+  visitor?: VisitorUpsert;
+  event?: EventInsert;
+}): Promise<void> {
+  if (typeof window === "undefined") return;
 
-/** Persist one clickstream event. RLS allows anonymous inserts. */
-async function insertEvent(event: EventInsert): Promise<void> {
   try {
     const supabase = createClient();
-    const { error } = await supabase.from("analytics_events").insert(event);
-    if (error) console.warn("[Analytics] Event insert failed:", error.message);
+    const { error } = await supabase.rpc("track_visit", {
+      p_secret: getVisitorSecret(),
+      p_visitor: input.visitor ?? null,
+      p_event: input.event ?? null,
+    });
+
+    if (!error) return;
+
+    if (!isMissingFunction(error)) {
+      console.warn("[Analytics] track_visit failed:", error.message);
+      return;
+    }
   } catch {
-    // Non-fatal
+    // Fall through to the direct writes below.
+  }
+
+  try {
+    const supabase = createClient();
+
+    if (input.visitor) {
+      const { error } = await supabase
+        .from("analytics_visitors")
+        .upsert(input.visitor, { onConflict: "visitor_id" });
+      if (error) console.warn("[Analytics] Visitor upsert failed:", error.message);
+    }
+
+    if (input.event) {
+      const { error } = await supabase.from("analytics_events").insert(input.event);
+      if (error) console.warn("[Analytics] Event insert failed:", error.message);
+    }
+  } catch {
+    // Non-fatal: analytics must never break the storefront.
   }
 }
 
@@ -314,20 +341,21 @@ export async function trackVisit(pagePath: string): Promise<void> {
     user_agent: device.userAgent,
   };
 
-  // analytics_events.visitor_id is a foreign key to analytics_visitors, so the
-  // upsert has to land first — run in parallel the insert can race ahead and
-  // be rejected with a foreign key violation.
-  await upsertVisitor(visitorPayload);
-  await insertEvent({
-    visitor_id: visitorId,
-    session_id: sessionId,
-    event_type: "pageview",
-    page_path: pagePath,
-    ip: geo.ip,
-    metadata: {
-      deviceModel: device.deviceModel,
-      city: geo.city,
-      country: geo.country,
+  // One call: track_visit writes the visitor row and the event in a single
+  // transaction, so the foreign key can no longer race ahead of the upsert.
+  await recordActivity({
+    visitor: visitorPayload,
+    event: {
+      visitor_id: visitorId,
+      session_id: sessionId,
+      event_type: "pageview",
+      page_path: pagePath,
+      ip: geo.ip,
+      metadata: {
+        deviceModel: device.deviceModel,
+        city: geo.city,
+        country: geo.country,
+      },
     },
   });
 
@@ -342,12 +370,14 @@ export async function trackItemClick(itemName: string, category: string): Promis
 
   const visitorId = getVisitorId();
 
-  await insertEvent({
-    visitor_id: visitorId,
-    session_id: getSessionId(),
-    event_type: "item_view",
-    page_path: window.location.pathname,
-    metadata: { itemName, category },
+  await recordActivity({
+    event: {
+      visitor_id: visitorId,
+      session_id: getSessionId(),
+      event_type: "item_view",
+      page_path: window.location.pathname,
+      metadata: { itemName, category },
+    },
   });
 
   void broadcastRealtimeEvent("analytics_event", {

@@ -1,3 +1,4 @@
+import { isMissingFunction } from "@/lib/rpc";
 import { getVisitorSecret } from "@/lib/visitor-identity";
 import { createClient } from "@/utils/supabase/client";
 import type { CartLine } from "@/lib/cart";
@@ -44,14 +45,6 @@ function toItemPayload(lines: CartLine[]) {
   }));
 }
 
-/** PostgREST's "no such function", for a project where 0009 isn't applied yet. */
-function isMissingRpc(error: { code?: string; message?: string }): boolean {
-  return (
-    error.code === "PGRST202" ||
-    /could not find the function|does not exist/i.test(error.message ?? "")
-  );
-}
-
 /**
  * PostgREST answers from an in-memory schema cache and only rebuilds it when the
  * database tells it to. A migration applied without a reload leaves new tables,
@@ -94,6 +87,7 @@ export async function submitOrder({
     p_items: items,
     p_customer_name: customerName?.trim() || null,
     p_note: note?.trim() || null,
+    p_secret: getVisitorSecret(),
   });
 
   if (!rpc.error) {
@@ -102,7 +96,7 @@ export async function submitOrder({
     return { ...payload.order, order_items: payload.items ?? [] };
   }
 
-  if (!isMissingRpc(rpc.error)) {
+  if (!isMissingFunction(rpc.error)) {
     throw new Error(rpc.error.message);
   }
 

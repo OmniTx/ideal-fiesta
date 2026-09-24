@@ -1,3 +1,4 @@
+import { isMissingFunction } from "@/lib/rpc";
 import { getVisitorSecret } from "@/lib/visitor-identity";
 import { broadcastRealtimeEvent } from "@/lib/realtime";
 import { createClient } from "@/utils/supabase/client";
@@ -44,10 +45,11 @@ export type JoinRewardsResult =
 /**
  * Adds the visitor to Foundry Rewards.
  *
- * `ignoreDuplicates` makes this `ON CONFLICT DO NOTHING` on the unique phone
- * number, so a returning customer signing up on a NEW device is told they are
- * already a member instead of being handed an RLS error — the existing row
- * belongs to another capability token and is deliberately unreachable.
+ * Preferred path is `register_rewards_member`, which takes the capability token
+ * as a parameter and does the comparison in SQL rather than trusting a request
+ * header. A returning customer signing up on a NEW device is told they are
+ * already a member rather than being handed an error — the existing row belongs
+ * to another token and is deliberately unreachable.
  */
 export async function joinRewards({
   firstName,
@@ -59,6 +61,33 @@ export async function joinRewards({
   }
 
   const supabase = createClient();
+
+  const rpc = await supabase.rpc("register_rewards_member", {
+    p_secret: getVisitorSecret(),
+    p_first_name: firstName.trim(),
+    p_phone: normalisePhone(phone),
+    p_source: source ?? null,
+  });
+
+  if (!rpc.error) {
+    const payload = rpc.data as
+      | { status?: string; member?: RewardsMember }
+      | null;
+
+    if (payload?.status === "joined" && payload.member) {
+      // An opaque ping so an open dashboard refreshes — no member data crosses
+      // the channel, the admin reads the row back through RLS.
+      void broadcastRealtimeEvent("lead_captured", {});
+      return { status: "joined", member: payload.member };
+    }
+    return { status: "already_member" };
+  }
+
+  if (!isMissingFunction(rpc.error)) {
+    throw new Error(rpc.error.message);
+  }
+
+  // Fallback for a project that has not applied 0011.
   const { data, error } = await supabase
     .from("rewards_members")
     .upsert(
@@ -78,10 +107,7 @@ export async function joinRewards({
   const member = (data ?? [])[0] as RewardsMember | undefined;
   if (!member) return { status: "already_member" };
 
-  // An opaque ping so an open dashboard refreshes — no member data crosses the
-  // channel, the admin reads the row back through RLS.
   void broadcastRealtimeEvent("lead_captured", {});
-
   return { status: "joined", member };
 }
 
